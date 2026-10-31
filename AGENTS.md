@@ -16,14 +16,14 @@ Workspace
      crates/ferrolys — binary crate; build.rs compiles the Slint UI
      crates/ferrolys-core — library crate: fonts (fontdb), theme, settings, i18n (rust-i18n), logging (tracing), paths (FerroLysPaths), LayerRegistry
      crates/ferrolys/ui/ — Slint sources; root window ui/app.slint, reusable widgets in ui/md3/components/
-     locales/ — rust-i18n translation files (ru, en)
+     i18n/ — rust-i18n translation files (ru, en)
 
 Non-negotiables (ordered by blast radius)
 
     Never use python/python3/node for file edits or scripting. Modify files with your patch tools; quick text transforms with sed/awk only.
     Rust + Slint only. Do not add language runtimes. Do not add dependencies or touch Cargo.toml without explicit permission.
     Never trust your memory of a crate API. If a call doesn't compile, the API differs from your training data — read the real signatures in ~/.cargo/registry/src/<crate>-*/src/ before "fixing" call sites. NEVER assume a library feature exists.
-    All user-facing strings go through i18n::t!("key"), keys defined in locales/ — added to BOTH ru and en. Never hardcode UI text in Rust or .slint.
+    All user-facing strings go through i18n::t!("key"), keys defined in i18n/ — added to BOTH ru and en. Never hardcode UI text in Rust or .slint.
     All filesystem access goes through FerroLysPaths (XDG dirs). Never hardcode ~/.ferrolys, /home/..., or absolute paths.
     No panics on recoverable failures. Use tracing::warn!/error! + graceful fallback. File logging must fail soft to stderr, never crash the app.
     Fonts: Inter is embedded and is the only UI font. Never reference proprietary fonts.
