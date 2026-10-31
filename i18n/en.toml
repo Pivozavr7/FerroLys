@@ -1,0 +1,60 @@
+# Ferrolys — English strings (en)
+# All UI strings live here; Rust and .slint read them via the i18n module.
+# Interpolation syntax: %{name}
+
+_version = 1
+
+[app]
+title = "Ferrolys"
+tagline = "Fast, honest, privacy-first Minecraft launcher"
+
+[nav]
+profiles = "Profiles"
+accounts = "Accounts"
+settings = "Settings"
+
+[common]
+cancel = "Cancel"
+close = "Close"
+back = "Back"
+open-log-folder = "Open log folder"
+data-folder = "Data folder"
+loading = "Loading…"
+
+[profiles]
+title = "Profiles"
+empty-title = "No profiles yet"
+empty-body = "Game instances with vanilla and loaders will appear here. This arrives in wave 1."
+
+[accounts]
+title = "Accounts"
+empty-title = "No accounts yet"
+empty-body = "Ely.by sign-in and offline profiles arrive in wave 1."
+
+[settings]
+title = "Settings"
+appearance = "Appearance"
+language = "Language"
+accent = "Accent color"
+font = "Interface font"
+network = "Network"
+verbose-logging = "Verbose logging (debug level)"
+paths = "Data folders"
+about = "About"
+version = "Version"
+path-data = "Instances and assets"
+path-config = "Settings"
+path-logs = "Logs"
+
+[demo]
+title = "Network diagnostics"
+hint = "Wave 0 demo task: downloads the Mojang version manifest through the async bridge, showing progress, speed and ETA."
+run = "Download version manifest"
+running = "Downloading…"
+done = "Done: %{count} versions available"
+speed-eta = "%{speed}/s · ETA %{eta}"
+error = "Download error: %{error}"
+
+[crash]
+title = "Launcher error"
+body = "The error details were written to the log."

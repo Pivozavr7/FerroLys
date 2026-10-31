@@ -1,0 +1,24 @@
+Ferrolys
+Copyright 2026 Ferrolys contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+---------------------------------------------------------------------------
+Third-party notices
+---------------------------------------------------------------------------
+
+1) Slint GUI toolkit (https://slint.dev)
+   Ferrolys is built with Slint. Slint is NOT licensed under Apache-2.0 or
+   GPL; it uses the "Slint Royalty-free License" for free development and
+   distribution of open-source applications. See:
+   https://slint.dev/licensing
+   Slint is used as an external dependency; no Slint source code is
+   distributed as part of this repository. Slint's own copyright notices
+   are preserved by the dependency itself.
+
+2) Inter typeface (https://rsms.me/inter/) — bundled in assets/fonts/
+   Licensed under the SIL Open Font License 1.1 (assets/fonts/Inter-OFL.txt).
+   Copyright (c) 2016 The Inter Project Authors.
+
+3) Material color utilities — the `material-colors` Rust crate is a port of
+   Google's material-color-utilities (MIT). Used as a dependency.

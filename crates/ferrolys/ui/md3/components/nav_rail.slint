@@ -1,0 +1,161 @@
+// MD3 NavigationRail: пункты сверху, настройки внизу, selected-индикатор.
+// Иконки — простые геометрические глифы (волна 0; настоящие Material
+// Symbols — в backlog, после волны 1).
+
+import { Theme } from "../tokens.slint";
+
+// Глиф-заглушка по индексу пункта.
+component RailGlyph inherits Rectangle {
+    in property <int> icon-index;
+
+    width: 24px;
+    height: 24px;
+
+    // 0 — «профили»: сетка 2×2.
+    if (icon-index == 0): Rectangle {
+        x: 3px; y: 3px; width: 8px; height: 8px; border-radius: 2px;
+        background: root.foreground;
+    }
+    if (icon-index == 0): Rectangle {
+        x: 13px; y: 3px; width: 8px; height: 8px; border-radius: 2px;
+        background: root.foreground;
+    }
+    if (icon-index == 0): Rectangle {
+        x: 3px; y: 13px; width: 8px; height: 8px; border-radius: 2px;
+        background: root.foreground;
+    }
+    if (icon-index == 0): Rectangle {
+        x: 13px; y: 13px; width: 8px; height: 8px; border-radius: 2px;
+        background: root.foreground;
+    }
+
+    // 1 — «аккаунты»: голова + плечи.
+    if (icon-index == 1): Rectangle {
+        x: 8px; y: 3px; width: 8px; height: 8px; border-radius: Theme.corner_full;
+        background: root.foreground;
+    }
+    if (icon-index == 1): Rectangle {
+        x: 4px; y: 13px; width: 16px; height: 10px; border-radius: 999px;
+        background: root.foreground;
+    }
+
+    // 2 — «настройки»: ползунки.
+    if (icon-index == 2): Rectangle {
+        x: 3px; y: 6px; width: 18px; height: 2px;
+        background: root.foreground;
+    }
+    if (icon-index == 2): Rectangle {
+        x: 3px; y: 11px; width: 18px; height: 2px;
+        background: root.foreground;
+    }
+    if (icon-index == 2): Rectangle {
+        x: 3px; y: 16px; width: 18px; height: 2px;
+        background: root.foreground;
+    }
+    if (icon-index == 2): Rectangle {
+        x: 7px; y: 4px; width: 6px; height: 6px; border-radius: Theme.corner_full;
+        background: root.foreground;
+    }
+    if (icon-index == 2): Rectangle {
+        x: 14px; y: 9px; width: 6px; height: 6px; border-radius: Theme.corner_full;
+        background: root.foreground;
+    }
+    if (icon-index == 2): Rectangle {
+        x: 5px; y: 14px; width: 6px; height: 6px; border-radius: Theme.corner_full;
+        background: root.foreground;
+    }
+
+    property <color> foreground: root.icon-foreground;
+    in property <color> icon-foreground: Theme.colors.on_surface_variant;
+}
+
+component RailItem inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected: false;
+    in property <int> icon-index: 0;
+    callback clicked();
+
+    height: 64px;
+
+    // Selected-индикатор (pill).
+    Rectangle {
+        x: (parent.width - 56px) / 2;
+        y: 4px;
+        width: 56px;
+        height: 32px;
+        border-radius: Theme.corner_full;
+        background: root.selected ? Theme.colors.secondary_container : transparent;
+        animate background { duration: Theme.dur_standard; }
+    }
+
+    RailGlyph {
+        x: (parent.width - 24px) / 2;
+        y: 8px;
+        icon-index: root.icon-index;
+        icon-foreground: root.selected ? Theme.colors.on_secondary_container : Theme.colors.on_surface_variant;
+    }
+
+    Text {
+        x: 0;
+        y: 40px;
+        width: parent.width;
+        horizontal-alignment: center;
+        text: root.label;
+        color: root.selected ? Theme.colors.on_surface : Theme.colors.on_surface_variant;
+        font-family: Theme.font_family;
+        font-size: Theme.font_label_medium;
+        font-weight: root.selected ? Theme.weight_medium : Theme.weight_regular;
+        overflow: elide;
+    }
+
+    // State layer.
+    Rectangle {
+        x: (parent.width - 56px) / 2;
+        y: 4px;
+        width: 56px;
+        height: 56px;
+        border-radius: Theme.corner_full;
+        background: Theme.colors.on_surface;
+        opacity: touch.pressed ? Theme.state_pressed : touch.has-hover ? Theme.state_hover : 0;
+        animate opacity { duration: Theme.dur_short; }
+    }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component NavRail inherits Rectangle {
+    in property <[string]> items;
+    in property <string> settings-label;
+    in property <int> current-index: 0;
+    callback navigate(int);
+
+    width: 80px;
+    background: Theme.colors.surface_container_low;
+
+    VerticalLayout {
+        padding-top: 16px;
+        padding-bottom: 16px;
+        spacing: 4px;
+
+        for label[i] in root.items: RailItem {
+            label: label;
+            icon-index: i;
+            selected: root.current-index == i;
+            clicked => { root.navigate(i); }
+        }
+
+        // Растяжка: настройки прижаты к низу.
+        Rectangle {
+            vertical-stretch: 1;
+        }
+
+        RailItem {
+            label: root.settings-label;
+            icon-index: 2;
+            selected: root.current-index == 99;
+            clicked => { root.navigate(99); }
+        }
+    }
+}

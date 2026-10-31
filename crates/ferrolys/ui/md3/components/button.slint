@@ -1,0 +1,56 @@
+// MD3 Button: filled / tonal / outlined / text + disabled + state layers.
+
+import { Theme } from "../tokens.slint";
+
+export enum ButtonVariant { filled, tonal, outlined, text }
+
+export component Button inherits Rectangle {
+    in property <ButtonVariant> variant: ButtonVariant.filled;
+    in property <string> text;
+    in property <bool> enabled: true;
+    callback clicked();
+
+    property <bool> filled: variant == ButtonVariant.filled;
+    property <bool> tonal: variant == ButtonVariant.tonal;
+    property <bool> outlined: variant == ButtonVariant.outlined;
+
+    property <color> bg: filled ? Theme.colors.primary
+        : tonal ? Theme.colors.secondary_container
+        : transparent;
+    property <color> fg: filled ? Theme.colors.on_primary
+        : tonal ? Theme.colors.on_secondary_container
+        : Theme.colors.primary;
+
+    height: 40px;
+    border-radius: Theme.corner_full;
+    background: enabled ? bg : Theme.colors.surface_container_highest;
+    border-width: outlined ? 1px : 0px;
+    border-color: outlined ? (enabled ? Theme.colors.outline : Theme.colors.outline_variant) : transparent;
+
+    // State layer (hover 8% / pressed 10%).
+    Rectangle {
+        background: filled ? Theme.colors.on_primary
+            : tonal ? Theme.colors.on_secondary_container
+            : Theme.colors.primary;
+        opacity: !root.enabled ? 0 : touch.pressed ? Theme.state_pressed
+            : touch.has-hover ? Theme.state_hover : 0;
+        animate opacity { duration: Theme.dur_short; }
+    }
+
+    Text {
+        text: root.text;
+        color: enabled ? fg : Theme.colors.on_surface_variant;
+        font-family: Theme.font_family;
+        font-size: Theme.font_label_large;
+        font-weight: Theme.weight_medium;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        width: parent.width;
+        height: parent.height;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}

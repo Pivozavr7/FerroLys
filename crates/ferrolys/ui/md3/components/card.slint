@@ -1,0 +1,18 @@
+// MD3 Card: filled / outlined (elevated — позже), слот через @children.
+
+import { Theme } from "../tokens.slint";
+
+export enum CardVariant { filled, outlined }
+
+export component Card inherits Rectangle {
+    in property <CardVariant> variant: CardVariant.filled;
+
+    border-radius: Theme.corner_md;
+    background: variant == CardVariant.outlined
+        ? Theme.colors.surface_container
+        : Theme.colors.surface_container_low;
+    border-width: variant == CardVariant.outlined ? 1px : 0px;
+    border-color: Theme.colors.outline_variant;
+
+    @children
+}

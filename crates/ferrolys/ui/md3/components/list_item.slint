@@ -1,0 +1,44 @@
+// MD3 ListItem: one-line / two-line, divider опционально.
+
+import { Theme } from "../tokens.slint";
+
+export component ListItem inherits Rectangle {
+    in property <string> title;
+    in property <string> subtitle;
+    in property <bool> divider: false;
+
+    property <bool> two-line: root.subtitle != "";
+
+    min-height: two-line ? 72px : 56px;
+    background: transparent;
+
+    // Контент.
+    VerticalLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-top: two-line ? 12px : 0px;
+        spacing: 2px;
+
+        Text {
+            text: root.title;
+            color: Theme.colors.on_surface;
+            font-family: Theme.font_family;
+            font-size: Theme.font_body_large;
+            font-weight: Theme.weight_regular;
+        }
+        if (two-line): Text {
+            text: root.subtitle;
+            color: Theme.colors.on_surface_variant;
+            font-family: Theme.font_family;
+            font-size: Theme.font_body_medium;
+        }
+    }
+
+    // Divider внизу.
+    if (divider): Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        width: parent.width;
+        background: Theme.colors.outline_variant;
+    }
+}

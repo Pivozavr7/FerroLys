@@ -1,0 +1,45 @@
+// MD3 assist/choice chip: выбор языка, акцента, шрифта в настройках.
+
+import { Theme } from "../tokens.slint";
+
+export component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> selected: false;
+    in property <bool> enabled: true;
+    // Превью шрифта (для выбора шрифта в настройках).
+    in property <string> chip-font-family: "";
+    callback clicked();
+
+    height: 32px;
+    border-radius: Theme.corner_sm;
+    background: selected ? Theme.colors.secondary_container : transparent;
+    border-width: 1px;
+    border-color: selected ? transparent : Theme.colors.outline;
+    opacity: enabled ? 1.0 : 0.4;
+
+    Text {
+        text: root.text;
+        color: selected ? Theme.colors.on_secondary_container : Theme.colors.on_surface_variant;
+        font-family: root.chip-font-family != "" ? root.chip-font-family : Theme.font_family;
+        font-size: Theme.font_label_large;
+        font-weight: Theme.weight_medium;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        width: parent.width;
+        height: parent.height;
+    }
+
+    // State layer.
+    Rectangle {
+        background: Theme.colors.on_surface;
+        opacity: !enabled ? 0 : touch.pressed ? Theme.state_pressed
+            : touch.has-hover ? Theme.state_hover : 0;
+        border-radius: Theme.corner_sm;
+        animate opacity { duration: Theme.dur_short; }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}

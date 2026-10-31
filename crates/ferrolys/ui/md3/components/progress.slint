@@ -1,0 +1,31 @@
+// MD3 LinearProgress: determinate + indeterminate.
+// Indeterminate позицию гоняет Rust-тикер (в .slint нет таймеров).
+
+import { Theme } from "../tokens.slint";
+
+export component LinearProgress inherits Rectangle {
+    in property <float> progress: 0.0; // 0..1
+    in property <bool> indeterminate: false;
+    in property <float> indeterminate-pos: 0.0; // 0..1, двигает Rust
+
+    height: 4px;
+    border-radius: 2px;
+    background: Theme.colors.surface_container_highest;
+    clip: true;
+
+    if (!indeterminate): Rectangle {
+        width: parent.width * min(max(root.progress, 0.0), 1.0);
+        height: parent.height;
+        border-radius: 2px;
+        background: Theme.colors.primary;
+        animate width { duration: Theme.dur_short; }
+    }
+
+    if (indeterminate): Rectangle {
+        width: parent.width / 3;
+        height: parent.height;
+        x: (parent.width + parent.width / 3) * min(max(root.indeterminate-pos, 0.0), 1.0) - parent.width / 3;
+        border-radius: 2px;
+        background: Theme.colors.primary;
+    }
+}

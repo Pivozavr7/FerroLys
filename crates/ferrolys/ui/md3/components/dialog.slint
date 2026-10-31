@@ -1,0 +1,58 @@
+// MD3 basic dialog: scrim + заголовок/контент/действия (план §5.3).
+// Используется как краш-диалог волны 0.
+
+import { Theme } from "../tokens.slint";
+import { Button, ButtonVariant } from "button.slint";
+
+export component Dialog inherits Rectangle {
+    in property <string> heading;
+    in property <string> body;
+    in property <string> action-label;
+    callback action();
+
+    // Scrim поверх всего окна.
+    x: 0;
+    y: 0;
+    width: 100%;
+    height: 100%;
+    background: #000000B3; // scrim (MD3: 32–40% чёрного поверх контента)
+
+    // Диалог по центру.
+    Rectangle {
+        x: (parent.width - min(parent.width - 32px, 420px)) / 2;
+        y: (parent.height - 200px) / 2;
+        width: min(parent.width - 32px, 420px);
+        height: 200px;
+        border-radius: Theme.corner_xl;
+        background: Theme.colors.surface_container_high;
+
+        VerticalLayout {
+            padding: 24px;
+            spacing: 12px;
+
+            Text {
+                text: root.heading;
+                color: Theme.colors.on_surface;
+                font-family: Theme.font_family;
+                font-size: Theme.font_headline_small;
+                font-weight: Theme.weight_medium;
+            }
+            Text {
+                text: root.body;
+                color: Theme.colors.on_surface_variant;
+                font-family: Theme.font_family;
+                font-size: Theme.font_body_medium;
+                wrap: word-wrap;
+                vertical-stretch: 1;
+            }
+            HorizontalLayout {
+                alignment: end;
+                Button {
+                    variant: ButtonVariant.tonal;
+                    text: root.action-label;
+                    clicked => { root.action(); }
+                }
+            }
+        }
+    }
+}

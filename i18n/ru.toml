@@ -1,0 +1,60 @@
+# Ferrolys — Russian strings (ru)
+# Все строки интерфейса живут здесь; Rust и .slint читают их через модуль i18n.
+# Синтаксис подстановки: %{name}
+
+_version = 1
+
+[app]
+title = "Ferrolys"
+tagline = "Быстрый, честный, приватный лаунчер Minecraft"
+
+[nav]
+profiles = "Профили"
+accounts = "Аккаунты"
+settings = "Настройки"
+
+[common]
+cancel = "Отмена"
+close = "Закрыть"
+back = "Назад"
+open-log-folder = "Открыть папку логов"
+data-folder = "Папка данных"
+loading = "Загрузка…"
+
+[profiles]
+title = "Профили"
+empty-title = "Профилей пока нет"
+empty-body = "Здесь появятся игровые инстансы с ваниллой и лоадерами. Это придёт в волне 1."
+
+[accounts]
+title = "Аккаунты"
+empty-title = "Аккаунтов пока нет"
+empty-body = "Вход через Ely.by и оффлайн-профили появятся в волне 1."
+
+[settings]
+title = "Настройки"
+appearance = "Внешний вид"
+language = "Язык"
+accent = "Акцентный цвет"
+font = "Шрифт интерфейса"
+network = "Сеть"
+verbose-logging = "Подробное логирование (уровень debug)"
+paths = "Папки данных"
+about = "О программе"
+version = "Версия"
+path-data = "Инстансы и ассеты"
+path-config = "Настройки"
+path-logs = "Логи"
+
+[demo]
+title = "Сетевая диагностика"
+hint = "Демо-задача волны 0: скачивает манифест версий Mojang через асинхронный мост, показывая прогресс, скорость и ETA."
+run = "Скачать манифест версий"
+running = "Загрузка…"
+done = "Готово: доступно %{count} версий"
+speed-eta = "%{speed}/с · Останется %{eta}"
+error = "Ошибка загрузки: %{error}"
+
+[crash]
+title = "Ошибка лаунчера"
+body = "Подробности ошибки записаны в лог."

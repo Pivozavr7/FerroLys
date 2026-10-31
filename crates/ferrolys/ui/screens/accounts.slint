@@ -1,0 +1,45 @@
+// Экран «Аккаунты»: пустое состояние волны 0 (Ely.by и оффлайн — волна 1).
+
+import { Theme } from "../md3/tokens.slint";
+import { Tr } from "../md3/i18n.slint";
+import { Card } from "../md3/components/card.slint";
+
+export component AccountsPage inherits Rectangle {
+    background: Theme.colors.surface;
+
+    Flickable {
+        VerticalLayout {
+            padding: 32px;
+            spacing: 24px;
+
+            Text {
+                text: Tr.s.accounts.title;
+                color: Theme.colors.on_surface;
+                font-family: Theme.font_family;
+                font-size: Theme.font_headline_small;
+                font-weight: Theme.weight_regular;
+            }
+
+            Card {
+                VerticalLayout {
+                    padding: 24px;
+                    spacing: 8px;
+                    Text {
+                        text: Tr.s.accounts.empty_title;
+                        color: Theme.colors.on_surface;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_title_medium;
+                        font-weight: Theme.weight_medium;
+                    }
+                    Text {
+                        text: Tr.s.accounts.empty_body;
+                        color: Theme.colors.on_surface_variant;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_body_medium;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+}

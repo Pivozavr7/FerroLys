@@ -1,0 +1,108 @@
+// Экран «Профили» (главный, план §5.5): пустое состояние волны 0 +
+// карточка сетевой диагностики (демо async-моста tokio ⇄ Slint).
+
+import { Theme } from "../md3/tokens.slint";
+import { Tr } from "../md3/i18n.slint";
+import { Card } from "../md3/components/card.slint";
+import { Button, ButtonVariant } from "../md3/components/button.slint";
+import { LinearProgress } from "../md3/components/progress.slint";
+
+export component ProfilesPage inherits Rectangle {
+    callback run-demo();
+
+    in property <bool> demo-running: false;
+    in property <float> demo-progress: 0.0;
+    in property <bool> demo-indeterminate: false;
+    in property <float> demo-indeterminate-pos: 0.0;
+    in property <string> demo-status;
+    in property <string> demo-detail;
+
+    background: Theme.colors.surface;
+
+    Flickable {
+        VerticalLayout {
+            padding: 32px;
+            spacing: 24px;
+
+            Text {
+                text: Tr.s.profiles.title;
+                color: Theme.colors.on_surface;
+                font-family: Theme.font_family;
+                font-size: Theme.font_headline_small;
+                font-weight: Theme.weight_regular;
+            }
+
+            // Пустое состояние.
+            Card {
+                VerticalLayout {
+                    padding: 24px;
+                    spacing: 8px;
+                    Text {
+                        text: Tr.s.profiles.empty_title;
+                        color: Theme.colors.on_surface;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_title_medium;
+                        font-weight: Theme.weight_medium;
+                    }
+                    Text {
+                        text: Tr.s.profiles.empty_body;
+                        color: Theme.colors.on_surface_variant;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_body_medium;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+
+            // Демо async-моста: скачивание манифеста с прогрессом.
+            Card {
+                VerticalLayout {
+                    padding: 24px;
+                    spacing: 16px;
+
+                    Text {
+                        text: Tr.s.demo.title;
+                        color: Theme.colors.on_surface;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_title_medium;
+                        font-weight: Theme.weight_medium;
+                    }
+                    Text {
+                        text: Tr.s.demo.hint;
+                        color: Theme.colors.on_surface_variant;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_body_small;
+                        wrap: word-wrap;
+                    }
+                    Button {
+                        variant: ButtonVariant.filled;
+                        text: root.demo-running ? Tr.s.demo.running : Tr.s.demo.run;
+                        enabled: !root.demo-running;
+                        clicked => { root.run-demo(); }
+                    }
+                    LinearProgress {
+                        visible: root.demo-running || root.demo-progress > 0.0;
+                        indeterminate: root.demo-indeterminate;
+                        progress: root.demo-progress;
+                        indeterminate-pos: root.demo-indeterminate-pos;
+                    }
+                    if (root.demo-status != ""): Text {
+                        text: root.demo-status;
+                        color: Theme.colors.on_surface;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_body_medium;
+                        font-weight: Theme.weight_medium;
+                        wrap: word-wrap;
+                    }
+                    if (root.demo-detail != ""): Text {
+                        text: root.demo-detail;
+                        color: Theme.colors.on_surface_variant;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_body_small;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+}

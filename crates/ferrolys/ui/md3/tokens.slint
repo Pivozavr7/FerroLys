@@ -1,0 +1,89 @@
+// MD3-токены Ferrolys (план §5.1–5.2): тёмная база, динамический акцент.
+// Цвета приходят из Rust (material-colors генерирует схему из seed) —
+// смена акцента на лету, без перезапуска.
+
+export struct ThemeColors {
+    primary: color,
+    on_primary: color,
+    primary_container: color,
+    on_primary_container: color,
+    inverse_primary: color,
+    secondary: color,
+    on_secondary: color,
+    secondary_container: color,
+    on_secondary_container: color,
+    tertiary: color,
+    on_tertiary: color,
+    tertiary_container: color,
+    on_tertiary_container: color,
+    error: color,
+    on_error: color,
+    error_container: color,
+    on_error_container: color,
+    surface_dim: color,
+    surface: color,
+    surface_bright: color,
+    surface_container_lowest: color,
+    surface_container_low: color,
+    surface_container: color,
+    surface_container_high: color,
+    surface_container_highest: color,
+    on_surface: color,
+    on_surface_variant: color,
+    outline: color,
+    outline_variant: color,
+    inverse_surface: color,
+    inverse_on_surface: color,
+    scrim: color,
+}
+
+export global Theme {
+    // Динамические цвета (заполняются из Rust).
+    in-out property <ThemeColors> colors;
+
+    // Типографика MD3 (15 стилей; размеры в px == dp).
+    in-out property <length> font_display_large: 57px;
+    in-out property <length> font_display_medium: 45px;
+    in-out property <length> font_display_small: 36px;
+    in-out property <length> font_headline_large: 32px;
+    in-out property <length> font_headline_medium: 28px;
+    in-out property <length> font_headline_small: 24px;
+    in-out property <length> font_title_large: 22px;
+    in-out property <length> font_title_medium: 16px;
+    in-out property <length> font_title_small: 14px;
+    in-out property <length> font_body_large: 16px;
+    in-out property <length> font_body_medium: 14px;
+    in-out property <length> font_body_small: 12px;
+    in-out property <length> font_label_large: 14px;
+    in-out property <length> font_label_medium: 12px;
+    in-out property <length> font_label_small: 11px;
+
+    // Начертания.
+    in-out property <int> weight_regular: 400;
+    in-out property <int> weight_medium: 500;
+    in-out property <int> weight_semibold: 600;
+    in-out property <int> weight_bold: 700;
+
+    // Формы (corner scale MD3).
+    in-out property <length> corner_xs: 4px;
+    in-out property <length> corner_sm: 8px;
+    in-out property <length> corner_md: 12px;
+    in-out property <length> corner_lg: 16px;
+    in-out property <length> corner_xl: 28px;
+    in-out property <length> corner_full: 999px;
+
+    // State layers (поверх контентного цвета).
+    in-out property <float> state_hover: 0.08;
+    in-out property <float> state_focus: 0.12;
+    in-out property <float> state_pressed: 0.10;
+    in-out property <float> state_dragged: 0.16;
+
+    // Стандартные длительности MD3.
+    in-out property <duration> dur_short: 100ms;
+    in-out property <duration> dur_standard: 200ms;
+    in-out property <duration> dur_emphasized: 400ms;
+
+    // Активное семейство шрифта: встроенный Inter или системное
+    // (пользовательский выбор, например Google Sans — только локально).
+    in-out property <string> font_family: "Inter";
+}

@@ -1,0 +1,78 @@
+// Строки UI для .slint. Источник правды — i18n/*.toml (rust-i18n);
+// структуру собирает Rust (`ui_strings()`), смена языка — на лету.
+
+export struct AppStrings {
+    title: string,
+    tagline: string,
+}
+
+export struct NavStrings {
+    profiles: string,
+    accounts: string,
+    settings: string,
+}
+
+export struct CommonStrings {
+    cancel: string,
+    close: string,
+    back: string,
+    open_log_folder: string,
+    data_folder: string,
+    loading: string,
+}
+
+export struct ProfilesStrings {
+    title: string,
+    empty_title: string,
+    empty_body: string,
+}
+
+export struct AccountsStrings {
+    title: string,
+    empty_title: string,
+    empty_body: string,
+}
+
+export struct SettingsStrings {
+    title: string,
+    appearance: string,
+    language: string,
+    accent: string,
+    font: string,
+    network: string,
+    verbose_logging: string,
+    paths: string,
+    about: string,
+    version: string,
+    path_data: string,
+    path_config: string,
+    path_logs: string,
+}
+
+export struct DemoStrings {
+    title: string,
+    hint: string,
+    run: string,
+    running: string,
+}
+
+export struct CrashStrings {
+    title: string,
+    body: string,
+}
+
+export struct UiStrings {
+    app: AppStrings,
+    nav: NavStrings,
+    common: CommonStrings,
+    profiles: ProfilesStrings,
+    accounts: AccountsStrings,
+    settings: SettingsStrings,
+    demo: DemoStrings,
+    crash: CrashStrings,
+}
+
+// Глобальный доступ к строкам из любого .slint: Tr.s.nav.profiles
+export global Tr {
+    in-out property <UiStrings> s;
+}

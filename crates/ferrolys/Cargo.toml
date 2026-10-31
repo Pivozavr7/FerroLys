@@ -1,0 +1,26 @@
+[package]
+name = "ferrolys"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Ferrolys — fast, honest, privacy-first Minecraft launcher"
+readme.workspace = true
+
+[[bin]]
+name = "ferrolys"
+path = "src/main.rs"
+
+[dependencies]
+ferrolys-core = { path = "../ferrolys-core" }
+slint.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
+futures-util.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+
+[build-dependencies]
+slint-build.workspace = true

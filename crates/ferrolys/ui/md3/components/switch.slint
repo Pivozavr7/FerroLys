@@ -1,0 +1,41 @@
+// MD3 Switch: on/off + state layers. Анимация thumb — emphasized.
+
+import { Theme } from "../tokens.slint";
+
+export component Switch inherits Rectangle {
+    in-out property <bool> checked: false;
+    callback toggled(bool);
+
+    width: 52px;
+    height: 32px;
+
+    // Track.
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: Theme.corner_full;
+        background: root.checked ? Theme.colors.primary : Theme.colors.surface_container_highest;
+        border-width: root.checked ? 0px : 2px;
+        border-color: Theme.colors.outline;
+        animate background, border-width, border-color { duration: Theme.dur_standard; }
+    }
+
+    // Thumb.
+    Rectangle {
+        property <length> size: root.checked ? 24px : 16px;
+        width: size;
+        height: size;
+        x: root.checked ? parent.width - size - 4px : 4px;
+        y: (parent.height - size) / 2;
+        border-radius: Theme.corner_full;
+        background: root.checked ? Theme.colors.on_primary : Theme.colors.outline;
+        animate x, width, height, background { duration: Theme.dur_standard; }
+    }
+
+    TouchArea {
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}

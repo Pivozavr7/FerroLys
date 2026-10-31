@@ -1,0 +1,249 @@
+// Экран «Настройки» (рабочий с волны 0): язык, акцент, шрифт,
+// подробное логирование, пути (XDG), «О программе».
+
+import { Theme } from "../md3/tokens.slint";
+import { Tr } from "../md3/i18n.slint";
+import { Card } from "../md3/components/card.slint";
+import { Chip } from "../md3/components/chip.slint";
+import { Switch } from "../md3/components/switch.slint";
+import { ListItem } from "../md3/components/list_item.slint";
+
+export struct LocaleOption {
+    code: string,
+    name: string,
+}
+
+export struct AccentSwatch {
+    name: string,
+    color: color,
+}
+
+component SwatchItem inherits Rectangle {
+    in property <color> swatch-color;
+    in property <bool> selected: false;
+    callback picked();
+
+    width: 40px;
+    height: 40px;
+
+    // Кольцо выделения.
+    Rectangle {
+        width: 40px;
+        height: 40px;
+        border-radius: Theme.corner_full;
+        border-width: 2px;
+        border-color: root.selected ? Theme.colors.primary : transparent;
+        background: transparent;
+    }
+    // Капля цвета.
+    Rectangle {
+        x: 6px;
+        y: 6px;
+        width: 28px;
+        height: 28px;
+        border-radius: Theme.corner_full;
+        background: root.swatch-color;
+        border-width: 1px;
+        border-color: Theme.colors.outline_variant;
+    }
+    TouchArea {
+        clicked => { root.picked(); }
+    }
+}
+
+component SectionTitle inherits Text {
+    color: Theme.colors.primary;
+    font-family: Theme.font_family;
+    font-size: Theme.font_label_large;
+    font-weight: Theme.weight_medium;
+}
+
+export component SettingsPage inherits Rectangle {
+    in property <[LocaleOption]> locale-options;
+    in property <int> current-locale: 0;
+    callback locale-selected(int);
+
+    in property <[AccentSwatch]> accent-swatches;
+    in property <int> current-accent: 0;
+    callback accent-selected(int);
+
+    in property <[string]> font-choices;
+    in property <string> current-font;
+    callback font-selected(string);
+
+    in property <bool> verbose-logging: false;
+    callback verbose-toggled(bool);
+
+    in property <string> path-data;
+    in property <string> path-config;
+    in property <string> path-logs;
+
+    in property <string> version;
+
+    background: Theme.colors.surface;
+
+    Flickable {
+        VerticalLayout {
+            padding: 32px;
+            spacing: 24px;
+
+            Text {
+                text: Tr.s.settings.title;
+                color: Theme.colors.on_surface;
+                font-family: Theme.font_family;
+                font-size: Theme.font_headline_small;
+                font-weight: Theme.weight_regular;
+            }
+
+            // — Внешний вид —
+            Card {
+                VerticalLayout {
+                    padding: 24px;
+                    spacing: 20px;
+
+                    SectionTitle { text: Tr.s.settings.appearance; }
+
+                    VerticalLayout {
+                        spacing: 8px;
+                        Text {
+                            text: Tr.s.settings.language;
+                            color: Theme.colors.on_surface;
+                            font-family: Theme.font_family;
+                            font-size: Theme.font_body_medium;
+                        }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
+                            for opt[i] in root.locale-options: Chip {
+                                text: opt.name;
+                                selected: root.current-locale == i;
+                                clicked => { root.locale-selected(i); }
+                            }
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 8px;
+                        Text {
+                            text: Tr.s.settings.accent;
+                            color: Theme.colors.on_surface;
+                            font-family: Theme.font_family;
+                            font-size: Theme.font_body_medium;
+                        }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
+                            for swatch[i] in root.accent-swatches: SwatchItem {
+                                swatch-color: swatch.color;
+                                selected: root.current-accent == i;
+                                picked => { root.accent-selected(i); }
+                            }
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 8px;
+                        Text {
+                            text: Tr.s.settings.font;
+                            color: Theme.colors.on_surface;
+                            font-family: Theme.font_family;
+                            font-size: Theme.font_body_medium;
+                        }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
+                            // Превью: каждая чипа уже нарисована своим шрифтом.
+                            for font-choice[i] in root.font-choices: Chip {
+                                text: font-choice;
+                                selected: root.current-font == font-choice;
+                                chip-font-family: font-choice;
+                                clicked => { root.font-selected(font-choice); }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // — Сеть / диагностика —
+            Card {
+                VerticalLayout {
+                    padding: 24px;
+                    spacing: 12px;
+                    SectionTitle { text: Tr.s.settings.network; }
+                    HorizontalLayout {
+                        Text {
+                            text: Tr.s.settings.verbose_logging;
+                            color: Theme.colors.on_surface;
+                            font-family: Theme.font_family;
+                            font-size: Theme.font_body_large;
+                            vertical-alignment: center;
+                            wrap: word-wrap;
+                        }
+                        Rectangle { }
+                        Switch {
+                            checked: root.verbose-logging;
+                            toggled(v) => { root.verbose-toggled(v); }
+                        }
+                    }
+                }
+            }
+
+            // — Пути —
+            Card {
+                VerticalLayout {
+                    padding-top: 16px;
+                    padding-bottom: 8px;
+                    spacing: 0px;
+                    HorizontalLayout {
+                        padding-left: 16px;
+                        padding-right: 16px;
+                        SectionTitle { text: Tr.s.settings.paths; }
+                    }
+                    ListItem {
+                        title: Tr.s.settings.path_data;
+                        subtitle: root.path-data;
+                    }
+                    ListItem {
+                        title: Tr.s.settings.path_config;
+                        subtitle: root.path-config;
+                        divider: true;
+                    }
+                    ListItem {
+                        title: Tr.s.settings.path_logs;
+                        subtitle: root.path-logs;
+                    }
+                }
+            }
+
+            // — О программе —
+            Card {
+                VerticalLayout {
+                    padding: 24px;
+                    spacing: 6px;
+                    SectionTitle { text: Tr.s.settings.about; }
+                    Text {
+                        text: Tr.s.app.title + " " + root.version;
+                        color: Theme.colors.on_surface;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_body_large;
+                        font-weight: Theme.weight_medium;
+                    }
+                    Text {
+                        text: Tr.s.app.tagline;
+                        color: Theme.colors.on_surface_variant;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_body_small;
+                        wrap: word-wrap;
+                    }
+                    Text {
+                        text: "Apache-2.0 · not affiliated with Mojang";
+                        color: Theme.colors.on_surface_variant;
+                        font-family: Theme.font_family;
+                        font-size: Theme.font_body_small;
+                        opacity: 0.7;
+                    }
+                }
+            }
+        }
+    }
+}

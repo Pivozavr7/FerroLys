@@ -1,0 +1,114 @@
+// Ferrolys — корневое окно (волна 0): NavigationRail + страницы,
+// живое переключение языка/акцента/шрифта, краш-диалог.
+
+import { Theme, ThemeColors } from "md3/tokens.slint";
+import {
+    Tr, UiStrings, AppStrings, NavStrings, CommonStrings,
+    ProfilesStrings, AccountsStrings, SettingsStrings, DemoStrings, CrashStrings,
+} from "md3/i18n.slint";
+import { NavRail } from "md3/components/nav_rail.slint";
+import { Dialog } from "md3/components/dialog.slint";
+import { ProfilesPage } from "screens/profiles.slint";
+import { AccountsPage } from "screens/accounts.slint";
+import { SettingsPage, LocaleOption, AccentSwatch } from "screens/settings.slint";
+
+// Ре-экспорт для Rust (include_modules генерирует только exported API корня).
+export {
+    Theme, ThemeColors, Tr, UiStrings, AppStrings, NavStrings, CommonStrings,
+    ProfilesStrings, AccountsStrings, SettingsStrings, DemoStrings, CrashStrings,
+    LocaleOption, AccentSwatch,
+}
+
+export component AppWindow inherits Window {
+    title: Tr.s.app.title;
+    min-width: 480px;
+    min-height: 720px;
+    background: Theme.colors.surface;
+
+    // 0 — профили, 1 — аккаунты, 2 — настройки.
+    in-out property <int> current-page: 0;
+
+    // — Демо async-моста (страница «Профили») —
+    in-out property <bool> demo-running: false;
+    in-out property <float> demo-progress: 0.0;
+    in-out property <bool> demo-indeterminate: false;
+    in-out property <float> demo-indeterminate-pos: 0.0;
+    in-out property <string> demo-status;
+    in-out property <string> demo-detail;
+    callback run-demo();
+
+    // — Настройки —
+    in-out property <[LocaleOption]> locale-options;
+    in-out property <int> current-locale: 0;
+    callback locale-selected(int);
+
+    in-out property <[AccentSwatch]> accent-swatches;
+    in-out property <int> current-accent: 0;
+    callback accent-selected(int);
+
+    in-out property <[string]> font-choices;
+    in-out property <string> current-font;
+    callback font-selected(string);
+
+    in-out property <bool> verbose-logging: false;
+    callback verbose-toggled(bool);
+
+    in-out property <string> path-data;
+    in-out property <string> path-config;
+    in-out property <string> path-logs;
+    in-out property <string> version;
+
+    // — Краш-диалог (непустое значение показывает диалог) —
+    in-out property <string> crash-message;
+
+    HorizontalLayout {
+        NavRail {
+            items: [Tr.s.nav.profiles, Tr.s.nav.accounts];
+            settings-label: Tr.s.nav.settings;
+            current-index: root.current-page == 2 ? 99 : root.current-page;
+            navigate(i) => {
+                root.current-page = i == 99 ? 2 : i;
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+            background: Theme.colors.surface;
+
+            if (root.current-page == 0): ProfilesPage {
+                demo-running: root.demo-running;
+                demo-progress: root.demo-progress;
+                demo-indeterminate: root.demo-indeterminate;
+                demo-indeterminate-pos: root.demo-indeterminate-pos;
+                demo-status: root.demo-status;
+                demo-detail: root.demo-detail;
+                run-demo => { root.run-demo(); }
+            }
+            if (root.current-page == 1): AccountsPage { }
+            if (root.current-page == 2): SettingsPage {
+                locale-options: root.locale-options;
+                current-locale: root.current-locale;
+                locale-selected(i) => { root.locale-selected(i); }
+                accent-swatches: root.accent-swatches;
+                current-accent: root.current-accent;
+                accent-selected(i) => { root.accent-selected(i); }
+                font-choices: root.font-choices;
+                current-font: root.current-font;
+                font-selected(f) => { root.font-selected(f); }
+                verbose-logging: root.verbose-logging;
+                verbose-toggled(v) => { root.verbose-toggled(v); }
+                path-data: root.path-data;
+                path-config: root.path-config;
+                path-logs: root.path-logs;
+                version: root.version;
+            }
+        }
+    }
+
+    if (root.crash-message != ""): Dialog {
+        heading: Tr.s.crash.title;
+        body: Tr.s.crash.body + "\n" + root.crash-message;
+        action-label: Tr.s.common.close;
+        action => { root.crash-message = ""; }
+    }
+}
