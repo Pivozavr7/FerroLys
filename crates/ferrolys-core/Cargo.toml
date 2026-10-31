@@ -19,6 +19,11 @@ tracing-subscriber.workspace = true
 rust-i18n.workspace = true
 material-colors.workspace = true
 fontdb.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
+futures-util.workspace = true
 
 [dev-dependencies]
 tempfile = "3"
+tokio.workspace = true
+wiremock.workspace = true

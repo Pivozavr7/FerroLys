@@ -13,4 +13,10 @@ pub enum CoreError {
 
     #[error("settings serialize error: {0}")]
     SettingsSerialize(#[from] toml::ser::Error),
+
+    #[error("http error: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("json parse error: {0}")]
+    Json(#[from] serde_json::Error),
 }

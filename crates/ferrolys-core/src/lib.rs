@@ -10,6 +10,7 @@
 //! - [`logging`]  — tracing: stderr + ротация файлов, runtime-уровень
 //! - [`theme`]    — тёмные MD3-палитры из seed-акцента (material-colors)
 //! - [`fonts`]    — встроенный Inter + обнаружение системных шрифтов
+//! - [`install`]  — установка версий: piston-meta, парсеры, загрузки (волна 1)
 //!
 //! Файлы локалей — в `i18n/` корня воркспейса; инициализация rust-i18n —
 //! строго в корне крейта (там генерируется хелпер для `t!`).
@@ -18,6 +19,7 @@ rust_i18n::i18n!("../../i18n", fallback = "en");
 pub mod error;
 pub mod fonts;
 pub mod i18n;
+pub mod install;
 pub mod logging;
 pub mod paths;
 pub mod settings;
