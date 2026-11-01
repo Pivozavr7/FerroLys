@@ -1518,6 +1518,7 @@ dependencies = [
  "rust-i18n",
  "serde",
  "serde_json",
+ "sha1",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",

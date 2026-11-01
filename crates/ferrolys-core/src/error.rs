@@ -25,4 +25,14 @@ pub enum CoreError {
 
     #[error("zip error: {0}")]
     Zip(#[from] zip::result::ZipError),
+
+    #[error("sha1 mismatch for {url}: expected {expected}, got {actual}")]
+    Sha1Mismatch {
+        url: String,
+        expected: String,
+        actual: String,
+    },
+
+    #[error("download failed for {url} after {attempts} attempt(s)")]
+    DownloadFailed { url: String, attempts: u32 },
 }
