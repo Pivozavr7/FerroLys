@@ -2,6 +2,7 @@
 
 pub mod assets;
 pub mod download;
+pub mod libraries;
 pub mod maven;
 pub mod version_json;
 pub mod version_manifest;
