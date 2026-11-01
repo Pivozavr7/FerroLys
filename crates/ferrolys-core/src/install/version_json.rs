@@ -109,44 +109,70 @@ pub struct LoggingConfig {
 }
 
 /// Библиотека version-JSON.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Library {
     pub name: String,
-    #[serde(default)]
     pub artifact: Option<Artifact>,
     /// `downloads.classifiers` (объект) → пары, отсортированы по имени.
-    #[serde(default, deserialize_with = "de_classifiers")]
     pub classifiers: Vec<(String, Artifact)>,
     /// `natives.linux` — классификатор для Linux, если у библиотеки есть
     /// нативные бинарники старого формата.
-    #[serde(default, deserialize_with = "de_natives_linux")]
     pub natives_linux: Option<String>,
-    #[serde(default)]
     pub rules: Vec<Rule>,
     /// `extract.exclude`.
-    #[serde(default, deserialize_with = "de_excludes")]
     pub extract_excludes: Vec<String>,
 }
 
-fn de_classifiers<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Vec<(String, Artifact)>, D::Error> {
-    let map = BTreeMap::<String, Artifact>::deserialize(deserializer)?;
-    Ok(map.into_iter().collect())
-}
+impl<'de> Deserialize<'de> for Library {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct RawLibraryDownloads {
+            #[serde(default)]
+            artifact: Option<Artifact>,
+            #[serde(default)]
+            classifiers: Option<BTreeMap<String, Artifact>>,
+        }
 
-fn de_natives_linux<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<String>, D::Error> {
-    let map = BTreeMap::<String, String>::deserialize(deserializer)?;
-    Ok(map.get("linux").cloned())
-}
+        #[derive(Deserialize)]
+        struct RawExtract {
+            #[serde(default)]
+            exclude: Vec<String>,
+        }
 
-fn de_excludes<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<String>, D::Error> {
-    #[derive(Deserialize)]
-    struct RawExtract {
-        #[serde(default)]
-        exclude: Vec<String>,
+        #[derive(Deserialize)]
+        struct Raw {
+            name: String,
+            #[serde(default)]
+            downloads: Option<RawLibraryDownloads>,
+            #[serde(default)]
+            natives: Option<BTreeMap<String, String>>,
+            #[serde(default)]
+            rules: Vec<Rule>,
+            #[serde(default)]
+            extract: Option<RawExtract>,
+        }
+
+        let raw = Raw::deserialize(deserializer)?;
+        let (artifact, classifiers) = raw
+            .downloads
+            .map(|downloads| (downloads.artifact, downloads.classifiers))
+            .unwrap_or_default();
+        Ok(Self {
+            name: raw.name,
+            artifact,
+            classifiers: classifiers
+                .map(|map| map.into_iter().collect())
+                .unwrap_or_default(),
+            natives_linux: raw
+                .natives
+                .and_then(|natives| natives.get("linux").cloned()),
+            rules: raw.rules,
+            extract_excludes: raw
+                .extract
+                .map(|extract| extract.exclude)
+                .unwrap_or_default(),
+        })
     }
-    Ok(RawExtract::deserialize(deserializer)?.exclude)
 }
 
 /// Распарсенный version-JSON.
@@ -227,10 +253,8 @@ struct RawVersion {
 
 /// Совпадает ли условие правила с окружением запуска (linux, x86_64, без фич).
 fn rule_matches(rule: &Rule) -> bool {
-    let os_ok = rule.os_name.as_deref().map_or(true, |name| name == "linux")
-        && rule.os_arch
-            .as_deref()
-            .map_or(true, |arch| arch == "x86_64");
+    let os_ok = rule.os_name.as_deref().is_none_or(|name| name == "linux")
+        && rule.os_arch.as_deref().is_none_or(|arch| arch == "x86_64");
     // У нас ни одна фича не включена → подходит только ожидание false.
     let features_ok = rule.features.iter().all(|(_, expected)| !expected);
     os_ok && features_ok

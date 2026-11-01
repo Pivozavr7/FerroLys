@@ -19,7 +19,10 @@ fn parse_fixture(version: &str) -> ferrolys_core::install::version_json::Version
 }
 
 fn allowed_count(vj: &ferrolys_core::install::version_json::VersionJson) -> usize {
-    vj.libraries.iter().filter(|lib| library_allowed(lib)).count()
+    vj.libraries
+        .iter()
+        .filter(|lib| library_allowed(lib))
+        .count()
 }
 
 fn lib_from_json(json: &str) -> Library {
@@ -50,7 +53,10 @@ fn parses_legacy_1_7_10() {
         .find(|l| l.name == "org.lwjgl.lwjgl:lwjgl-platform:2.9.1")
         .expect("lwjgl-platform present");
     assert_eq!(natives.natives_linux.as_deref(), Some("natives-linux"));
-    assert!(natives.extract_excludes.iter().any(|e| e.contains("META-INF")));
+    assert!(natives
+        .extract_excludes
+        .iter()
+        .any(|e| e.contains("META-INF")));
     assert!(natives
         .classifiers
         .iter()

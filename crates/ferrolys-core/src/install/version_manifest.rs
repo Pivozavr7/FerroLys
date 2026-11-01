@@ -203,9 +203,6 @@ mod tests {
 
     #[test]
     fn parse_rejects_garbage() {
-        assert!(matches!(
-            parse(b"not json"),
-            Err(CoreError::Json(_))
-        ));
+        assert!(matches!(parse(b"not json"), Err(CoreError::Json(_))));
     }
 }

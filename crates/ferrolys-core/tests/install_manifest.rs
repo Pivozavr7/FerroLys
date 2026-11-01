@@ -22,7 +22,9 @@ fn fixture(name: &str) -> Vec<u8> {
 async fn fetch_manifest_parses_fixture_from_wiremock() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
-        .respond_with(ResponseTemplate::new(200).set_body_bytes(fixture("version_manifest_v2.json")))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_bytes(fixture("version_manifest_v2.json")),
+        )
         .mount(&server)
         .await;
 
@@ -55,7 +57,9 @@ async fn fetch_manifest_parses_fixture_from_wiremock() {
 async fn fetch_manifest_uses_cache_within_ttl() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
-        .respond_with(ResponseTemplate::new(200).set_body_bytes(fixture("version_manifest_v2.json")))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_bytes(fixture("version_manifest_v2.json")),
+        )
         .expect(1)
         .mount(&server)
         .await;
