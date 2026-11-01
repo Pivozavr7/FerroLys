@@ -35,4 +35,7 @@ pub enum CoreError {
 
     #[error("download failed for {url} after {attempts} attempt(s)")]
     DownloadFailed { url: String, attempts: u32 },
+
+    #[error("version not found in manifest: {0}")]
+    VersionNotFound(String),
 }
