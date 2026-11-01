@@ -57,11 +57,11 @@
 
 Логика кэша: файл `<cache_dir>/version_manifest_v2.json`; свежесть — по mtime (< `MANIFEST_TTL_SECS` → читать с диска; иначе GET, проверить SHA-1 от тела, атомарно записать `.tmp` → rename, затем распарсить). Сетевая ошибка при просроченном, но имеющемся кэше → `tracing::warn!` + отдать кэш (fallback, не ошибка).
 
-- [ ] **Step 1: Написать фикстуру манифеста**
+- [x] **Step 1: Написать фикстуру манифеста**
 
 Скачать реальный `version_manifest_v2.json` в `tests/fixtures/` (один раз, закоммитить).
 
-- [ ] **Step 2: Написать падающий тест**
+- [x] **Step 2: Написать падающий тест**
 
 ```rust
 #[tokio::test]
@@ -82,15 +82,15 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
 }
 ```
 
-- [ ] **Step 3: Запустить → FAIL** (нет модуля `install`): `cargo test -p ferrolys-core --test install_manifest`
+- [x] **Step 3: Запустить → FAIL** (нет модуля `install`): `cargo test -p ferrolys-core --test install_manifest`
 
-- [ ] **Step 4: Реализовать `version_manifest.rs` + пополнить `CoreError`**
+- [x] **Step 4: Реализовать `version_manifest.rs` + пополнить `CoreError`**
 
 Тело кэша/сети — по сигнатурам выше; serde-теги для `type` → `VersionType` (`rename_all = "lowercase"`-маппинг, `Preview` ← `preview`).
 
-- [ ] **Step 5: Запустить → PASS**, затем `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] **Step 5: Запустить → PASS**, затем `cargo clippy --workspace --all-targets -- -D warnings`
 
-- [ ] **Step 6: Коммит** `feat(install): piston-meta version manifest client with TTL cache`
+- [x] **Step 6: Коммит** `feat(install): piston-meta version manifest client with TTL cache`
 
 ---
 
@@ -116,9 +116,9 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
 
 Правила аргументов: `arguments.game/jvm` — строка **или** массив смешанного содержимого (строка | объект `{value, rules}`); объекты фильтруются теми же `Rule`. Склеивание: game-аргументы добавляются к `minecraftArguments` старых версий (или заменяют его), jvm-аргументы — отдельно.
 
-- [ ] **Step 1: Скачать 4 реальных version-JSON в fixtures**
+- [x] **Step 1: Скачать 4 реальных version-JSON в fixtures**
 
-- [ ] **Step 2: Падающие тесты** (`cargo test -p ferrolys-core --test version_json`):
+- [x] **Step 2: Падающие тесты** (`cargo test -p ferrolys-core --test version_json`):
 
 ```rust
 #[test] fn parses_legacy_1_7_10();      // main_class=="net.minecraft.client.main.Minecraft", java_version==None (нет ключа), есть minecraftArguments-токены в arguments, библиотека с natives classifier присутствует
@@ -129,13 +129,13 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
 #[test] fn missing_rules_means_allowed();                  // рукописный JSON
 ```
 
-- [ ] **Step 3: FAIL подтверждён** (модуля нет)
+- [x] **Step 3: FAIL подтверждён** (модуля нет)
 
-- [ ] **Step 4: Реализовать `version_json.rs`**
+- [x] **Step 4: Реализовать `version_json.rs`**
 
-- [ ] **Step 5: PASS + clippy** — `cargo test -p ferrolys-core --test version_json && cargo clippy --workspace --all-targets -- -D warnings`
+- [x] **Step 5: PASS + clippy** — `cargo test -p ferrolys-core --test version_json && cargo clippy --workspace --all-targets -- -D warnings`
 
-- [ ] **Step 6: Коммит** `feat(install): version json parser with library rules (1.7.10 → 1.21)`
+- [x] **Step 6: Коммит** `feat(install): version json parser with library rules (1.7.10 → 1.21)`
 
 ---
 
@@ -154,7 +154,7 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
   - `pub fn extract_natives(archive: &Path, dest: &Path) -> Result<usize, CoreError>;` — распаковка в `dest`, пропуск путей, содержащих любой из `extract_excludes` (передаётся списком) и `META-INF`; возвращает число файлов. Создание `dest` — включено.
   - Сигнатура точнее: `pub fn extract_natives(archive: &Path, dest: &Path, excludes: &[String]) -> Result<usize, CoreError>;`
 
-- [ ] **Step 1: Падающие тесты** (`cargo test -p ferrolys-core --test maven`):
+- [x] **Step 1: Падающие тесты** (`cargo test -p ferrolys-core --test maven`):
 
 ```rust
 #[test] fn maven_path_plain();          // "com.mojang:brigadier:1.0.18" → "com/mojang/brigadier/1.0.18/brigadier-1.0.18.jar"
@@ -164,13 +164,13 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
 #[test] fn extract_natives_skips_meta_inf_and_excludes(); // zip из памяти (tempfile) с файлами: natives/libfoo.so, natives/META-INF/MANIFEST.MF, natives/META-INF/versions/x → число==1, файл существует
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Реализовать `maven.rs`** (`zip::ZipArchive` по `File`)
+- [x] **Step 3: Реализовать `maven.rs`** (`zip::ZipArchive` по `File`)
 
-- [ ] **Step 4: PASS + clippy**
+- [x] **Step 4: PASS + clippy**
 
-- [ ] **Step 5: Коммит** `feat(install): maven coordinate paths and natives extraction`
+- [x] **Step 5: Коммит** `feat(install): maven coordinate paths and natives extraction`
 
 ---
 
@@ -198,7 +198,7 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
   - `futures_util::stream::iter` + `buffer_unordered(DOWNLOAD_CONCURRENCY)`.
   - Ошибка первой задачи → отмена остальных, возврат `Err`.
 
-- [ ] **Step 1: Падающие тесты** (`cargo test -p ferrolys-core --test download`):
+- [x] **Step 1: Падающие тесты** (`cargo test -p ferrolys-core --test download`):
 
 ```rust
 #[tokio::test] async fn downloads_and_verifies_sha1();           // 2 файла, оба ок, файлы на месте, watch получил bytes_done==total
@@ -209,13 +209,13 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
 #[tokio::test] async fn progress_reports_speed_and_eta();         // после завершения: files_done==files_total, eta_secs==Some(0) или None — фиксируем Some(0)
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Реализовать `download.rs`**
+- [x] **Step 3: Реализовать `download.rs`**
 
-- [ ] **Step 4: PASS + clippy** — тест resume убедиться, что реально шёл через Range (wiremock-хиты с заголовком)
+- [x] **Step 4: PASS + clippy** — тест resume убедиться, что реально шёл через Range (wiremock-хиты с заголовком)
 
-- [ ] **Step 5: Коммит** `feat(install): concurrent download engine with resume, sha1 and progress`
+- [x] **Step 5: Коммит** `feat(install): concurrent download engine with resume, sha1 and progress`
 
 ---
 
@@ -234,7 +234,7 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
   - `pub fn parse_asset_index(bytes: &[u8]) -> Result<AssetIndex, CoreError>;`
   - `pub fn asset_tasks(index: &AssetIndex, assets_dir: &Path) -> Vec<DownloadTask>;` — url `https://resources.download.minecraft.net/{h[0..2]}/{h}`, dest `<assets_dir>/objects/{h[0..2]}/{h}`
 
-- [ ] **Step 1: Падающие тесты** (`cargo test -p ferrolys-core --test assets`):
+- [x] **Step 1: Падающие тесты** (`cargo test -p ferrolys-core --test assets`):
 
 ```rust
 #[test] fn parses_asset_index();            // objects.len()==N из фикстуры, total_size посчитан
@@ -242,9 +242,9 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
 #[tokio::test] async fn installs_assets_on_wiremock(); // wiremock отдаёт байты (sha1 считаем от них самих) → download_all → файлы на месте, progress байты сошлись
 ```
 
-- [ ] **Step 2: FAIL → Step 3: реализовать → Step 4: PASS + clippy**
+- [x] **Step 2: FAIL → Step 3: реализовать → Step 4: PASS + clippy**
 
-- [ ] **Step 5: Коммит** `feat(install): asset index parsing and download tasks`
+- [x] **Step 5: Коммит** `feat(install): asset index parsing and download tasks`
 
 ---
 
@@ -260,7 +260,7 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
   - `pub fn library_tasks(vj: &VersionJson, libraries_dir: &Path) -> Vec<DownloadTask>;` — артефакты разрешённых (linux) библиотек; для каждой: `artifact` → путь из `maven_path(name)`; классификаторы natives-linux → те же пути + `-natives-linux`; url берём из `Artifact.url` (Mojang отдаёт готовые), отсутствующий url → пропуск с `warn!`.
   - `pub fn natives_targets(vj: &VersionJson, natives_dir: &Path) -> Vec<(PathBuf, Vec<String>)>;` — пары (куда распаковывать `<instances>/<id>/versions/<vj.id>/natives`, excludes библиотеки) для библиотек с `natives_linux`.
 
-- [ ] **Step 1: Падающие тесты** (`cargo test -p ferrolys-core --test libraries`):
+- [x] **Step 1: Падающие тесты** (`cargo test -p ferrolys-core --test libraries`):
 
 ```rust
 #[test] fn library_tasks_for_1_7_10_on_fixture();   // рукописные ожидания: количество задач, контрольный путь "net/lwjgl/lwjgl/lwjgl/2.9.4-nightly-20150209/lwjgl-2.9.4-nightly-20150209.jar" (сверить с фактическим fixture-контентом!)
@@ -268,9 +268,9 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
 #[test] fn natives_targets_have_excludes();         // META-INF идут в excludes из Library.extract_excludes
 ```
 
-- [ ] **Step 2: FAIL → Step 3: реализовать → Step 4: PASS + clippy**
+- [x] **Step 2: FAIL → Step 3: реализовать → Step 4: PASS + clippy**
 
-- [ ] **Step 5: Коммит** `feat(install): library download tasks and natives layout`
+- [x] **Step 5: Коммит** `feat(install): library download tasks and natives layout`
 
 ---
 
@@ -295,7 +295,7 @@ async fn fetch_manifest_serves_stale_cache_when_network_fails() {
   6. logging: файл конфига → `<assets_dir>/log_configs/<file.id>` (сама подмена аргумента — в 7.2).
 - Атомарность: каждая фаза идемпотентна через механизм Task 4.
 
-- [ ] **Step 1: Падающий тест** (`cargo test -p ferrolys-core --test install_version`):
+- [x] **Step 1: Падающий тест** (`cargo test -p ferrolys-core --test install_version`):
 
 ```rust
 #[tokio::test]
@@ -305,17 +305,17 @@ async fn full_install_builds_instance_tree();     // wiremock-дерево (fixt
 async fn second_install_is_noop_on_network();      // повторный вызов → hits сервера не растут (кэш+идемпотентность)
 ```
 
-- [ ] **Step 2: FAIL → Step 3: реализовать `orchestrator.rs` → Step 4: PASS + clippy**
+- [x] **Step 2: FAIL → Step 3: реализовать `orchestrator.rs` → Step 4: PASS + clippy**
 
-- [ ] **Step 5: Полный гейт:** `cargo build && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace`
+- [x] **Step 5: Полный гейт:** `cargo build && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace`
 
-- [ ] **Step 6: Коммит** `feat(install): version install orchestrator (jar, libraries, natives, assets)`
+- [x] **Step 6: Коммит** `feat(install): version install orchestrator (jar, libraries, natives, assets)`
 
 ---
 
 ## Definition of Done (§7.1)
 
-- [ ] `cargo test --workspace` — все тесты (24 старых + новые) зелёные
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings` чисто
-- [ ] Фикстуры 1.7.10 / 1.12.2 / 1.20.1 / 1.21.1 парсятся, правила библиотек проверены
-- [ ] `cargo build` без предупреждений; коммиты на каждый таск
+- [x] `cargo test --workspace` — все тесты (24 старых + новые) зелёные
+- [x] `cargo clippy --workspace --all-targets -- -D warnings` чисто
+- [x] Фикстуры 1.7.10 / 1.12.2 / 1.20.1 / 1.21.1 парсятся, правила библиотек проверены
+- [x] `cargo build` без предупреждений; коммиты на каждый таск
