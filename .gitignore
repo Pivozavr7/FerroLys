@@ -5,3 +5,6 @@
 .vscode/
 .DS_Store
 .superpowers/
+AGENTS.md
+opencode.json
+docs/superpowers/plans/
