@@ -19,4 +19,10 @@ pub enum CoreError {
 
     #[error("json parse error: {0}")]
     Json(#[from] serde_json::Error),
+
+    #[error("invalid maven coordinate: {0}")]
+    InvalidMaven(String),
+
+    #[error("zip error: {0}")]
+    Zip(#[from] zip::result::ZipError),
 }
