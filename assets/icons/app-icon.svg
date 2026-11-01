@@ -1,12 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Ferrolys: "Fe" на ржавом (iron-oxide) градиенте -->
-  <defs>
-    <linearGradient id="rust" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#C4693B"/>
-      <stop offset="1" stop-color="#7A2E12"/>
-    </linearGradient>
-  </defs>
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#rust)"/>
-  <text x="32" y="42" font-family="Inter, Roboto, sans-serif" font-size="28" font-weight="700"
-        fill="#F5F0EC" text-anchor="middle">Fe</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Ferrolys">
+  <!-- Material Design 3: tonal container (dark rust) + on-container glyph, no gradients, no fonts -->
+  <rect width="64" height="64" rx="16" fill="#6D3423"/>
+  <g fill="#FFDBCF">
+    <rect x="19.5" y="15" width="9" height="34" rx="4.5"/>
+    <rect x="19.5" y="15" width="25" height="9" rx="4.5"/>
+    <rect x="19.5" y="28.5" width="19" height="9" rx="4.5"/>
+  </g>
 </svg>
