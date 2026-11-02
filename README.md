@@ -51,8 +51,6 @@ key to, and the Horizon runtime.
 - [ ] **Wave 3** *(v0.3.0)* — AI modpack builder (BYOK)
 - [ ] **Wave 4** *(v0.4.0)* — Windows, Microsoft accounts, CurseForge
 
-The full plan lives in [ferrolys-dev-plan.md](ferrolys-dev-plan.md).
-
 ---
 
 ## Architecture
