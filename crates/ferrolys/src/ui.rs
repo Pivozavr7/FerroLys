@@ -2,10 +2,10 @@
 
 use ferrolys_core::fonts;
 use ferrolys_core::i18n::tr;
-use ferrolys_core::theme;
+use ferrolys_core::theme::{self, FullScheme};
 use slint::{Color, ModelRc, VecModel};
 
-use crate::{AccentSwatch, LocaleOption, ThemeColors, UiStrings};
+use crate::{AccentSwatch, LocaleOption, MaterialScheme, MaterialSchemes, ThemeColors, UiStrings};
 
 /// Все строки UI в текущей локали (вызывается при старте и при смене языка).
 pub fn ui_strings() -> UiStrings {
@@ -106,6 +106,69 @@ pub fn theme_colors(seed: u32) -> ThemeColors {
 
 fn rgb(value: u32) -> Color {
     Color::from_rgb_u8((value >> 16) as u8, (value >> 8) as u8, value as u8)
+}
+
+/// Схемы для `MaterialPalette` (material-components) из того же seed,
+/// что и `theme_colors` — палитра UI и библиотечных компонентов одна.
+pub fn material_schemes(seed: u32) -> MaterialSchemes {
+    MaterialSchemes {
+        dark: material_scheme(theme::full_scheme(seed, false)),
+        light: material_scheme(theme::full_scheme(seed, true)),
+    }
+}
+
+fn material_scheme(s: FullScheme) -> MaterialScheme {
+    MaterialScheme {
+        r#background: rgb(s.background),
+        r#error: rgb(s.error),
+        r#errorContainer: rgb(s.error_container),
+        r#inverseOnSurface: rgb(s.inverse_on_surface),
+        r#inversePrimary: rgb(s.inverse_primary),
+        r#inverseSurface: rgb(s.inverse_surface),
+        r#onBackground: rgb(s.on_background),
+        r#onError: rgb(s.on_error),
+        r#onErrorContainer: rgb(s.on_error_container),
+        r#onPrimary: rgb(s.on_primary),
+        r#onPrimaryContainer: rgb(s.on_primary_container),
+        r#onPrimaryFixed: rgb(s.on_primary_fixed),
+        r#onPrimaryFixedVariant: rgb(s.on_primary_fixed_variant),
+        r#onSecondary: rgb(s.on_secondary),
+        r#onSecondaryContainer: rgb(s.on_secondary_container),
+        r#onSecondaryFixed: rgb(s.on_secondary_fixed),
+        r#onSecondaryFixedVariant: rgb(s.on_secondary_fixed_variant),
+        r#onSurface: rgb(s.on_surface),
+        r#onSurfaceVariant: rgb(s.on_surface_variant),
+        r#onTertiary: rgb(s.on_tertiary),
+        r#onTertiaryContainer: rgb(s.on_tertiary_container),
+        r#onTertiaryFixed: rgb(s.on_tertiary_fixed),
+        r#onTertiaryFixedVariant: rgb(s.on_tertiary_fixed_variant),
+        r#outline: rgb(s.outline),
+        r#outlineVariant: rgb(s.outline_variant),
+        r#primary: rgb(s.primary),
+        r#primaryContainer: rgb(s.primary_container),
+        r#primaryFixed: rgb(s.primary_fixed),
+        r#primaryFixedDim: rgb(s.primary_fixed_dim),
+        r#scrim: rgb(s.scrim),
+        r#secondary: rgb(s.secondary),
+        r#secondaryContainer: rgb(s.secondary_container),
+        r#secondaryFixed: rgb(s.secondary_fixed),
+        r#secondaryFixedDim: rgb(s.secondary_fixed_dim),
+        r#shadow: rgb(s.shadow),
+        r#surface: rgb(s.surface),
+        r#surfaceBright: rgb(s.surface_bright),
+        r#surfaceContainer: rgb(s.surface_container),
+        r#surfaceContainerHigh: rgb(s.surface_container_high),
+        r#surfaceContainerHighest: rgb(s.surface_container_highest),
+        r#surfaceContainerLow: rgb(s.surface_container_low),
+        r#surfaceContainerLowest: rgb(s.surface_container_lowest),
+        r#surfaceDim: rgb(s.surface_dim),
+        r#surfaceTint: rgb(s.surface_tint),
+        r#surfaceVariant: rgb(s.surface_variant),
+        r#tertiary: rgb(s.tertiary),
+        r#tertiaryContainer: rgb(s.tertiary_container),
+        r#tertiaryFixed: rgb(s.tertiary_fixed),
+        r#tertiaryFixedDim: rgb(s.tertiary_fixed_dim),
+    }
 }
 
 /// Опции локалей: код + самоназвание (не переводится — «English»/«Русский»).

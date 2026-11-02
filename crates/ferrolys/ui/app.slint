@@ -11,19 +11,26 @@ import { Dialog } from "md3/components/dialog.slint";
 import { ProfilesPage } from "screens/profiles.slint";
 import { AccountsPage } from "screens/accounts.slint";
 import { SettingsPage, LocaleOption, AccentSwatch } from "screens/settings.slint";
+import {
+    MaterialWindow, MaterialPalette, MaterialScheme, MaterialSchemes,
+} from "@material";
 
 // Ре-экспорт для Rust (include_modules генерирует только exported API корня).
 export {
     Theme, ThemeColors, Tr, UiStrings, AppStrings, NavStrings, CommonStrings,
     ProfilesStrings, AccountsStrings, SettingsStrings, DemoStrings, CrashStrings,
     LocaleOption, AccentSwatch,
+    MaterialPalette, MaterialScheme, MaterialSchemes,
 }
 
-export component AppWindow inherits Window {
+export component AppWindow inherits MaterialWindow {
     title: Tr.s.app.title;
     min-width: 480px;
     min-height: 720px;
-    background: Theme.colors.surface;
+    // Шрифт по умолчанию для всего окна: у Text без явного font-family
+    // (в т.ч. в компонентах material-components) значение берётся отсюда,
+    // а не из «Roboto» стиля Slint. Смена шрифта в настройках живая.
+    default-font-family: Theme.font_family;
 
     // 0 — профили, 1 — аккаунты, 2 — настройки.
     in-out property <int> current-page: 0;

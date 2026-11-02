@@ -50,6 +50,7 @@ fn main() -> Result<()> {
     // — Токены темы и строки (живое переключение — из callback'ов ниже) —
     Theme::get(&ui).set_colors(ui::theme_colors(settings.accent_seed));
     Theme::get(&ui).set_font_family(settings.font_family.clone().into());
+    MaterialPalette::get(&ui).set_schemes(ui::material_schemes(settings.accent_seed));
     Tr::get(&ui).set_s(ui::ui_strings());
 
     // — Разделяемое состояние настроек для callback'ов —
@@ -93,6 +94,7 @@ fn main() -> Result<()> {
         let Some(ui) = weak.upgrade() else { return };
         let seed = ui::accent_seed(index);
         Theme::get(&ui).set_colors(ui::theme_colors(seed));
+        MaterialPalette::get(&ui).set_schemes(ui::material_schemes(seed));
         ui.set_current_accent(index);
         let mut guard = shared.lock().unwrap();
         guard.accent_seed = seed;

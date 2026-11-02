@@ -129,6 +129,123 @@ fn hex(c: Rgb) -> u32 {
     ((c.red as u32) << 16) | ((c.green as u32) << 8) | (c.blue as u32)
 }
 
+/// Полная MD3-схема: все роли, включая fixed/background/shadow —
+/// их требует `MaterialPalette` библиотеки material-components (§5).
+/// Имена повторяют роли MD3 (snake_case, как в `material-colors`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FullScheme {
+    pub primary: u32,
+    pub on_primary: u32,
+    pub primary_container: u32,
+    pub on_primary_container: u32,
+    pub inverse_primary: u32,
+    pub primary_fixed: u32,
+    pub primary_fixed_dim: u32,
+    pub on_primary_fixed: u32,
+    pub on_primary_fixed_variant: u32,
+    pub secondary: u32,
+    pub on_secondary: u32,
+    pub secondary_container: u32,
+    pub on_secondary_container: u32,
+    pub secondary_fixed: u32,
+    pub secondary_fixed_dim: u32,
+    pub on_secondary_fixed: u32,
+    pub on_secondary_fixed_variant: u32,
+    pub tertiary: u32,
+    pub on_tertiary: u32,
+    pub tertiary_container: u32,
+    pub on_tertiary_container: u32,
+    pub tertiary_fixed: u32,
+    pub tertiary_fixed_dim: u32,
+    pub on_tertiary_fixed: u32,
+    pub on_tertiary_fixed_variant: u32,
+    pub error: u32,
+    pub on_error: u32,
+    pub error_container: u32,
+    pub on_error_container: u32,
+    pub surface_dim: u32,
+    pub surface: u32,
+    pub surface_tint: u32,
+    pub surface_bright: u32,
+    pub surface_container_lowest: u32,
+    pub surface_container_low: u32,
+    pub surface_container: u32,
+    pub surface_container_high: u32,
+    pub surface_container_highest: u32,
+    pub on_surface: u32,
+    pub on_surface_variant: u32,
+    pub outline: u32,
+    pub outline_variant: u32,
+    pub inverse_surface: u32,
+    pub inverse_on_surface: u32,
+    pub surface_variant: u32,
+    pub background: u32,
+    pub on_background: u32,
+    pub shadow: u32,
+    pub scrim: u32,
+}
+
+/// Полная схема из seed: `light` — светлая, иначе тёмная.
+pub fn full_scheme(seed: u32, light: bool) -> FullScheme {
+    let theme = ThemeBuilder::with_source(Rgb::from_u32(seed)).build();
+    let s = if light {
+        &theme.schemes.light
+    } else {
+        &theme.schemes.dark
+    };
+    FullScheme {
+        primary: hex(s.primary),
+        on_primary: hex(s.on_primary),
+        primary_container: hex(s.primary_container),
+        on_primary_container: hex(s.on_primary_container),
+        inverse_primary: hex(s.inverse_primary),
+        primary_fixed: hex(s.primary_fixed),
+        primary_fixed_dim: hex(s.primary_fixed_dim),
+        on_primary_fixed: hex(s.on_primary_fixed),
+        on_primary_fixed_variant: hex(s.on_primary_fixed_variant),
+        secondary: hex(s.secondary),
+        on_secondary: hex(s.on_secondary),
+        secondary_container: hex(s.secondary_container),
+        on_secondary_container: hex(s.on_secondary_container),
+        secondary_fixed: hex(s.secondary_fixed),
+        secondary_fixed_dim: hex(s.secondary_fixed_dim),
+        on_secondary_fixed: hex(s.on_secondary_fixed),
+        on_secondary_fixed_variant: hex(s.on_secondary_fixed_variant),
+        tertiary: hex(s.tertiary),
+        on_tertiary: hex(s.on_tertiary),
+        tertiary_container: hex(s.tertiary_container),
+        on_tertiary_container: hex(s.on_tertiary_container),
+        tertiary_fixed: hex(s.tertiary_fixed),
+        tertiary_fixed_dim: hex(s.tertiary_fixed_dim),
+        on_tertiary_fixed: hex(s.on_tertiary_fixed),
+        on_tertiary_fixed_variant: hex(s.on_tertiary_fixed_variant),
+        error: hex(s.error),
+        on_error: hex(s.on_error),
+        error_container: hex(s.error_container),
+        on_error_container: hex(s.on_error_container),
+        surface_dim: hex(s.surface_dim),
+        surface: hex(s.surface),
+        surface_tint: hex(s.surface_tint),
+        surface_bright: hex(s.surface_bright),
+        surface_container_lowest: hex(s.surface_container_lowest),
+        surface_container_low: hex(s.surface_container_low),
+        surface_container: hex(s.surface_container),
+        surface_container_high: hex(s.surface_container_high),
+        surface_container_highest: hex(s.surface_container_highest),
+        on_surface: hex(s.on_surface),
+        on_surface_variant: hex(s.on_surface_variant),
+        outline: hex(s.outline),
+        outline_variant: hex(s.outline_variant),
+        inverse_surface: hex(s.inverse_surface),
+        inverse_on_surface: hex(s.inverse_on_surface),
+        surface_variant: hex(s.surface_variant),
+        background: hex(s.background),
+        on_background: hex(s.on_background),
+        shadow: hex(s.shadow),
+        scrim: hex(s.scrim),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
