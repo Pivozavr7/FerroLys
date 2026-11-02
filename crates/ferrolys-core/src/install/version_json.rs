@@ -13,6 +13,8 @@ use serde_json::Value;
 
 use crate::error::CoreError;
 
+use super::version_manifest::VersionType;
+
 /// Действие правила.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
@@ -180,6 +182,8 @@ impl<'de> Deserialize<'de> for Library {
 pub struct VersionJson {
     pub id: String,
     pub main_class: String,
+    /// Тип версии из JSON (`"type"`), `Unknown` если ключа нет.
+    pub kind: VersionType,
     /// `javaVersion.majorVersion` (8, 17, 21…), `None` если ключа нет.
     pub java_version: Option<i32>,
     /// Игровые аргументы, отфильтрованные по правилам для linux/x86_64.
@@ -237,6 +241,9 @@ struct RawVersion {
     id: String,
     #[serde(rename = "mainClass")]
     main_class: String,
+    /// Тип версии (`"type": "release"`); у старых манифестов отсутствует.
+    #[serde(default, rename = "type")]
+    kind: Option<String>,
     #[serde(default, rename = "javaVersion")]
     java_version: Option<RawJavaVersion>,
     #[serde(default)]
@@ -322,6 +329,11 @@ pub fn parse_version_json(bytes: &[u8]) -> Result<VersionJson, CoreError> {
     Ok(VersionJson {
         id: raw.id,
         main_class: raw.main_class,
+        kind: raw
+            .kind
+            .as_deref()
+            .map(VersionType::from_raw)
+            .unwrap_or(VersionType::Unknown),
         java_version: raw.java_version.map(|java| java.major),
         arguments,
         jvm_arguments,

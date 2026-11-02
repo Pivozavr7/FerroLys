@@ -150,6 +150,7 @@ mod tests {
             java_version: None,
             arguments: vec![],
             jvm_arguments: vec![],
+            kind: crate::install::version_manifest::VersionType::Release,
             asset_index: serde_json::from_str(
                 r#"{"id":"1","url":"http://x","sha1":"00","size":1}"#,
             )

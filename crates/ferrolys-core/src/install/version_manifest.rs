@@ -37,7 +37,7 @@ pub enum VersionType {
 }
 
 impl VersionType {
-    fn from_raw(raw: &str) -> Self {
+    pub fn from_raw(raw: &str) -> Self {
         match raw {
             "release" => Self::Release,
             "snapshot" => Self::Snapshot,
@@ -45,6 +45,18 @@ impl VersionType {
             "old_alpha" => Self::OldAlpha,
             "preview" => Self::Preview,
             _ => Self::Unknown,
+        }
+    }
+
+    /// Строка для `${version_type}` в аргументах игры.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Release => "release",
+            Self::Snapshot => "snapshot",
+            Self::OldBeta => "old_beta",
+            Self::OldAlpha => "old_alpha",
+            Self::Preview => "preview",
+            Self::Unknown => "unknown",
         }
     }
 }

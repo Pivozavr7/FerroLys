@@ -20,6 +20,7 @@ pub mod error;
 pub mod fonts;
 pub mod i18n;
 pub mod install;
+pub mod launch;
 pub mod logging;
 pub mod paths;
 pub mod settings;
