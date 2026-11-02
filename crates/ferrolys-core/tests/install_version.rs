@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::io::Write;
+use std::path::PathBuf;
 
 use ferrolys_core::install::download::Progress;
 use ferrolys_core::install::orchestrator::{install_version, InstallOptions};
@@ -14,13 +15,6 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 fn sha1_hex(bytes: &[u8]) -> String {
     let digest = Sha1::digest(bytes);
     digest.iter().map(|b| format!("{b:02x}")).collect()
-}
-
-fn fixture(name: &str) -> Vec<u8> {
-    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures")
-        .join(name);
-    fs::read(path).expect("fixture must exist")
 }
 
 /// Zip natives-классификатора: один .so и META-INF (должен быть пропущен).
@@ -47,6 +41,7 @@ struct Tree {
     natives_bytes: Vec<u8>,
     asset_bodies: Vec<Vec<u8>>,
     log_bytes: Vec<u8>,
+    version_path: String,
     instance: String,
     version: String,
 }
@@ -157,22 +152,22 @@ async fn mounted_server() -> Tree {
     }))
     .expect("version json serializes");
 
-    // манифест — реальный fixture; путь version-json берём из его entry
-    let manifest_bytes = fixture("version_manifest_v2.json");
-    let manifest: serde_json::Value = serde_json::from_slice(&manifest_bytes).unwrap();
-    let entry_url = manifest["versions"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|entry| entry["id"] == "1.21.1")
-        .expect("1.21.1 in manifest")["url"]
-        .as_str()
-        .unwrap()
-        .to_string();
-    let version_path = entry_url
-        .strip_prefix("https://piston-meta.mojang.com")
-        .expect("piston-meta url")
-        .to_string();
+    // манифест — синтетический, но с честным sha1 нашего version-json
+    // (кэш version-json теперь валидируется по sha1 из манифеста)
+    let manifest_bytes = serde_json::to_vec(&serde_json::json!({
+        "latest": {"release": "1.21.1", "snapshot": "1.21.1"},
+        "versions": [{
+            "id": "1.21.1",
+            "type": "release",
+            "url": format!("{base}/v1/v.json"),
+            "time": "2024-08-08T12:00:00+00:00",
+            "releaseTime": "2024-08-08T12:00:00+00:00",
+            "sha1": sha1_hex(&version_json),
+            "complianceLevel": 1
+        }]
+    }))
+    .expect("manifest serializes");
+    let version_path = "/v1/v.json".to_string();
 
     Mock::given(method("GET"))
         .and(path("/mc/game/version_manifest_v2.json"))
@@ -180,7 +175,7 @@ async fn mounted_server() -> Tree {
         .mount(&server)
         .await;
     Mock::given(method("GET"))
-        .and(path(version_path))
+        .and(path(&version_path))
         .respond_with(ResponseTemplate::new(200).set_body_bytes(version_json))
         .mount(&server)
         .await;
@@ -236,6 +231,7 @@ async fn mounted_server() -> Tree {
         natives_bytes,
         asset_bodies,
         log_bytes,
+        version_path,
         instance: "main".to_string(),
         version: "1.21.1".to_string(),
     }
@@ -337,12 +333,49 @@ async fn full_install_builds_instance_tree() {
         "asset-index закэширован"
     );
 
-    // прогресс финальной фазы сходится
+    // общий прогресс по ВСЕЙ установке: jar + 2 libs + natives-джар + 4 assets + логинг
+    let expected_files = 9u64;
+    let expected_bytes = tree.jar_bytes.len() as u64
+        + tree.lib_a.len() as u64
+        + tree.lib_b.len() as u64
+        + tree.natives_bytes.len() as u64
+        + tree
+            .asset_bodies
+            .iter()
+            .map(|b| b.len() as u64)
+            .sum::<u64>()
+        + tree.log_bytes.len() as u64;
     let progress = rx.borrow().clone();
-    assert_eq!(progress.files_done, progress.files_total);
-    assert!(progress.files_total > 0);
-    assert_eq!(progress.bytes_done, progress.bytes_total);
+    assert_eq!(progress.files_total as u64, expected_files);
+    assert_eq!(progress.files_done as u64, expected_files);
+    assert_eq!(progress.bytes_total, expected_bytes);
+    assert_eq!(progress.bytes_done, expected_bytes);
     assert_eq!(progress.eta_secs, Some(0));
+
+    // после установки не должно остаться ни .part, ни осиротевших .json.tmp
+    let mut junk = Vec::new();
+    collect_junk(&paths.instances_dir(), &mut junk);
+    collect_junk(&paths.assets_dir(), &mut junk);
+    collect_junk(&paths.cache_dir(), &mut junk);
+    assert!(junk.is_empty(), "мусор после установки: {junk:?}");
+}
+
+/// Рекурсивно собрать временные файлы (`.part`, `*.json.tmp`).
+fn collect_junk(root: &std::path::Path, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = fs::read_dir(root) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_junk(&path, out);
+        } else {
+            let name = path.to_string_lossy();
+            if name.ends_with(".part") || name.ends_with(".json.tmp") {
+                out.push(path);
+            }
+        }
+    }
 }
 
 #[tokio::test]
@@ -394,4 +427,34 @@ async fn second_install_is_noop_on_network() {
         .join(&tree.version)
         .join("natives/libfoo.so");
     assert!(so.exists());
+}
+
+#[tokio::test]
+async fn poisoned_version_cache_is_refetched() {
+    // Каптив-портал/прокси мог записать HTML вместо version-json.
+    // Кэш валидируется по sha1 из манифеста → битый файл перечитывается из сети.
+    let tree = mounted_server().await;
+    let tmp = tempfile::tempdir().unwrap();
+    let paths = FerrolysPaths::with_home(tmp.path());
+    let (tx, _rx) = watch::channel(Progress::default());
+
+    let cache = paths.cache_dir().join("versions/1.21.1.json");
+    fs::create_dir_all(cache.parent().unwrap()).unwrap();
+    fs::write(&cache, b"<html>captive portal</html>").unwrap();
+
+    install_version(&paths, &options(&tree), &tx)
+        .await
+        .expect("отравленный кэш должен самоизлечиваться");
+
+    let requests = tree.server.received_requests().await.unwrap();
+    assert!(
+        requests.iter().any(|r| r.url.path() == tree.version_path),
+        "битый кэш должен привести к повторному скачиванию version-json"
+    );
+    let healed = fs::read(&cache).unwrap();
+    let healed = std::str::from_utf8(&healed).unwrap_or("");
+    assert!(
+        healed.starts_with('{') && !healed.contains("captive"),
+        "кэш должен быть заменён настоящим манифестом"
+    );
 }

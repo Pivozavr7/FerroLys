@@ -13,46 +13,63 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 /// Разрешённые каталоги приложения.
+///
+/// Базовые каталоги (`$XDG_*` или fallback под home) вычисляются один раз
+/// при создании — `with_home` намеренно **не читает окружение**, чтобы
+/// тесты были изолированы от реального `XDG_*` пользователя.
 #[derive(Debug, Clone)]
 pub struct FerrolysPaths {
-    home: PathBuf,
+    config_base: PathBuf,
+    data_base: PathBuf,
+    cache_base: PathBuf,
+    state_base: PathBuf,
 }
 
 impl FerrolysPaths {
     /// Определить пути из окружения (`XDG_*` + `$HOME`).
     pub fn discover() -> Self {
+        let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
         Self {
-            home: dirs::home_dir().unwrap_or_else(|| PathBuf::from("/")),
+            config_base: resolve_base(std::env::var_os("XDG_CONFIG_HOME"), home.join(".config")),
+            data_base: resolve_base(std::env::var_os("XDG_DATA_HOME"), home.join(".local/share")),
+            cache_base: resolve_base(std::env::var_os("XDG_CACHE_HOME"), home.join(".cache")),
+            state_base: resolve_base(
+                std::env::var_os("XDG_STATE_HOME"),
+                home.join(".local/state"),
+            ),
         }
     }
 
-    /// Конструктор для тестов: пути строятся относительно заданного home.
+    /// Конструктор для тестов: пути строятся строго относительно заданного
+    /// home, реальное окружение `XDG_*` игнорируется.
     pub fn with_home(home: impl Into<PathBuf>) -> Self {
-        Self { home: home.into() }
-    }
-
-    fn base(&self, env_key: &str, fallback: &str) -> PathBuf {
-        resolve_base(std::env::var_os(env_key), self.home.join(fallback))
+        let home = home.into();
+        Self {
+            config_base: home.join(".config"),
+            data_base: home.join(".local/share"),
+            cache_base: home.join(".cache"),
+            state_base: home.join(".local/state"),
+        }
     }
 
     /// `~/.config/ferrolys` — настройки.
     pub fn config_dir(&self) -> PathBuf {
-        self.base("XDG_CONFIG_HOME", ".config").join("ferrolys")
+        self.config_base.join("ferrolys")
     }
 
     /// `~/.local/share/ferrolys` — инстансы, assets, рантаймы.
     pub fn data_dir(&self) -> PathBuf {
-        self.base("XDG_DATA_HOME", ".local/share").join("ferrolys")
+        self.data_base.join("ferrolys")
     }
 
     /// `~/.cache/ferrolys` — HTTP-кэш.
     pub fn cache_dir(&self) -> PathBuf {
-        self.base("XDG_CACHE_HOME", ".cache").join("ferrolys")
+        self.cache_base.join("ferrolys")
     }
 
     /// `~/.local/state/ferrolys` — логи.
     pub fn state_dir(&self) -> PathBuf {
-        self.base("XDG_STATE_HOME", ".local/state").join("ferrolys")
+        self.state_base.join("ferrolys")
     }
 
     /// `…/instances/<id>/` — корень классической структуры `.minecraft`.

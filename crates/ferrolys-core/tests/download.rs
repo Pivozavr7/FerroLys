@@ -201,6 +201,68 @@ async fn io_error_returns_typed_error() {
 }
 
 #[tokio::test]
+async fn duplicate_dest_downloaded_once() {
+    // В реальных индексах ассетов бывают одинаковые хеши под разными именами —
+    // две задачи с одинаковым dest писали бы в один .part параллельно.
+    let server = MockServer::start().await;
+    let body: &[u8] = b"same bytes everywhere";
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(body))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let dest = dir.path().join("same.jar");
+    let tasks = vec![
+        task(&format!("{}/one", server.uri()), dest.clone(), body),
+        task(&format!("{}/two", server.uri()), dest.clone(), body),
+    ];
+    let (tx, rx) = watch::channel(Progress::default());
+
+    download_all(&reqwest::Client::new(), tasks, &tx)
+        .await
+        .expect("deduped download must succeed");
+
+    assert_eq!(fs::read(&dest).unwrap(), body);
+    assert_eq!(rx.borrow().files_total, 1, "дубликат dest должен отсеяться");
+    server.verify().await; // ровно один GET
+}
+
+#[tokio::test]
+async fn server_errors_retry_and_report_attempt_count() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(500))
+        .expect(u64::from(DOWNLOAD_ATTEMPTS))
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let (tx, _rx) = watch::channel(Progress::default());
+    let tasks = vec![task(
+        &format!("{}/boom", server.uri()),
+        dir.path().join("boom.jar"),
+        b"x",
+    )];
+
+    let err = download_all(&reqwest::Client::new(), tasks, &tx)
+        .await
+        .expect_err("5xx must fail after retries");
+
+    match err {
+        ferrolys_core::CoreError::DownloadFailed { attempts, .. } => {
+            assert_eq!(
+                attempts, DOWNLOAD_ATTEMPTS,
+                "ошибка должна называть реальное число попыток"
+            );
+        }
+        other => panic!("expected DownloadFailed, got: {other:?}"),
+    }
+    server.verify().await; // ровно DOWNLOAD_ATTEMPTS запросов
+}
+
+#[tokio::test]
 async fn progress_reports_speed_and_eta() {
     let server = MockServer::start().await;
     let body: &[u8] = b"progress payload";

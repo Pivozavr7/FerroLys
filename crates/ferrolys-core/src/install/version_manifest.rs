@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
+use super::cache;
 use crate::error::CoreError;
 use crate::paths::FerrolysPaths;
 
@@ -117,23 +118,6 @@ fn cache_is_fresh(file: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Атомарная запись кэша: `<file>.tmp` → rename.
-fn write_cache(file: &Path, bytes: &[u8]) -> Result<(), CoreError> {
-    if let Some(dir) = file.parent() {
-        fs::create_dir_all(dir)?;
-    }
-    let tmp = file.with_extension("json.tmp");
-    fs::write(&tmp, bytes)?;
-    fs::rename(&tmp, file)?;
-    Ok(())
-}
-
-async fn fetch_bytes(client: &reqwest::Client, url: &str) -> Result<Vec<u8>, CoreError> {
-    let response = client.get(url).send().await?.error_for_status()?;
-    let bytes = response.bytes().await?;
-    Ok(bytes.to_vec())
-}
-
 /// Скачать манифест [`PISTON_MANIFEST_URL`] (через TTL-кэш).
 pub async fn fetch_manifest(
     client: &reqwest::Client,
@@ -163,22 +147,29 @@ pub async fn fetch_manifest_from(
         }
     }
 
-    match fetch_bytes(client, url).await {
+    match cache::fetch_bytes(client, url).await {
         Ok(bytes) => {
             let manifest = parse(&bytes)?;
-            if let Err(err) = write_cache(&cache_file, &bytes) {
+            if let Err(err) = cache::write_cache(&cache_file, &bytes) {
                 tracing::warn!(%err, "failed to write version manifest cache");
             }
             Ok(manifest)
         }
         Err(net_err) => {
-            if cache_file.exists() {
-                tracing::warn!(error = %net_err, "manifest fetch failed, serving cached copy");
-                let bytes = fs::read(&cache_file)?;
-                parse(&bytes)
-            } else {
-                Err(net_err)
+            // Fallback на просроченный кэш; если кэш битый/нечитаемый —
+            // возвращаем исходную сетевую ошибку, а не ошибку парсинга.
+            if let Ok(bytes) = fs::read(&cache_file) {
+                match parse(&bytes) {
+                    Ok(manifest) => {
+                        tracing::warn!(error = %net_err, "manifest fetch failed, serving cached copy");
+                        return Ok(manifest);
+                    }
+                    Err(err) => {
+                        tracing::warn!(%err, "corrupt manifest cache during network fallback");
+                    }
+                }
             }
+            Err(net_err)
         }
     }
 }

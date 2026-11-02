@@ -70,7 +70,7 @@ async fn installs_assets_on_wiremock() {
     ];
     let server = MockServer::start().await;
     let mut expected_bytes = 0u64;
-    for (name, body) in &bodies {
+    for (_, body) in &bodies {
         let hash = sha1_hex(body);
         Mock::given(method("GET"))
             .and(wiremock::matchers::path(format!(
@@ -81,7 +81,6 @@ async fn installs_assets_on_wiremock() {
             .respond_with(ResponseTemplate::new(200).set_body_bytes(body.clone()))
             .mount(&server)
             .await;
-        let _ = name;
         expected_bytes += body.len() as u64;
     }
 

@@ -4,18 +4,19 @@
 //! Каждый файл скачивается в `<dest>.part` и переименовывается только после
 //! успешной проверки SHA-1 — бракованный контент никогда не попадает в `dest`.
 
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use futures_util::stream::{self, StreamExt};
-use sha1::{Digest, Sha1};
 use tokio::sync::watch;
 
+use super::cache;
 use crate::error::CoreError;
 
 /// Сколько загрузок идёт одновременно.
@@ -75,18 +76,72 @@ impl AttemptFail {
 }
 
 /// Общее состояние прогресса всех задач.
+///
+/// `bytes_done = completed_bytes + Σ inflight`: каждый файл учитывается ровно
+/// один раз — при завершении его вклад переносится из inflight в completed.
+/// Поэтому фаза установки не сбрасывает счётчики, а суммирует их.
 struct ProgressState {
     files_total: usize,
     bytes_total: u64,
-    bytes_done: AtomicU64,
+    completed_bytes: AtomicU64,
     files_done: AtomicU64,
+    /// Сколько байт уже «принято» по каждому незавершённому файлу.
+    inflight: Mutex<HashMap<PathBuf, u64>>,
     start: Instant,
     last_publish: Mutex<Instant>,
 }
 
 impl ProgressState {
+    fn bytes_done(&self) -> u64 {
+        let inflight = match self.inflight.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        self.completed_bytes.load(Ordering::Relaxed) + inflight.values().sum::<u64>()
+    }
+
+    /// Задать вклад `.part` файла (0 — убрать из inflight).
+    fn set_inflight(&self, dest: &Path, bytes: u64) {
+        let mut inflight = match self.inflight.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if bytes == 0 {
+            inflight.remove(dest);
+        } else {
+            inflight.insert(dest.to_path_buf(), bytes);
+        }
+    }
+
+    /// Дозаписать байты в вклад текущего файла.
+    fn add_inflight(&self, dest: &Path, bytes: u64) {
+        if bytes == 0 {
+            return;
+        }
+        let mut inflight = match self.inflight.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        *inflight.entry(dest.to_path_buf()).or_insert(0) += bytes;
+    }
+
+    /// Сверить inflight с реальным размером `.part` на диске (после ошибки).
+    fn sync_inflight(&self, dest: &Path) {
+        let len = fs::metadata(part_path(dest))
+            .map(|meta| meta.len())
+            .unwrap_or(0);
+        self.set_inflight(dest, len);
+    }
+
+    /// Файл завершён: вклад `.part` переносится в completed.
+    fn complete(&self, dest: &Path, bytes: u64) {
+        self.set_inflight(dest, 0);
+        self.completed_bytes.fetch_add(bytes, Ordering::Relaxed);
+        self.files_done.fetch_add(1, Ordering::Relaxed);
+    }
+
     fn publish(&self, tx: &watch::Sender<Progress>) {
-        let bytes_done = self.bytes_done.load(Ordering::Relaxed);
+        let bytes_done = self.bytes_done();
         let elapsed = self.start.elapsed().as_secs_f64().max(0.001);
         let speed_bps = (bytes_done as f64 / elapsed) as u64;
         let eta_secs = self
@@ -123,29 +178,6 @@ fn part_path(dest: &Path) -> PathBuf {
     PathBuf::from(name)
 }
 
-fn hex_encode(bytes: &[u8]) -> String {
-    let mut out = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        out.push_str(&format!("{byte:02x}"));
-    }
-    out
-}
-
-/// SHA-1 файла по содержимому (hex, нижний регистр).
-fn sha1_file(path: &Path) -> Result<String, CoreError> {
-    let mut file = fs::File::open(path)?;
-    let mut hasher = Sha1::new();
-    let mut buf = vec![0u8; 64 * 1024];
-    loop {
-        let read = file.read(&mut buf)?;
-        if read == 0 {
-            break;
-        }
-        hasher.update(&buf[..read]);
-    }
-    Ok(hex_encode(&hasher.finalize()))
-}
-
 /// Существующий файл уже валиден? (sha1 == None → считаем валидным).
 fn existing_is_valid(dest: &Path, sha1: Option<&str>) -> bool {
     if !dest.exists() {
@@ -153,7 +185,7 @@ fn existing_is_valid(dest: &Path, sha1: Option<&str>) -> bool {
     }
     match sha1 {
         None => true,
-        Some(expected) => match sha1_file(dest) {
+        Some(expected) => match cache::sha1_file(dest) {
             Ok(actual) => actual == expected,
             Err(err) => {
                 tracing::warn!(%err, path = %dest.display(), "cannot hash existing file, redownloading");
@@ -175,6 +207,8 @@ async fn attempt_download(
     }
     let part = part_path(&task.dest);
     let part_len = fs::metadata(&part).map(|meta| meta.len()).unwrap_or(0);
+    // уже лежащий в .part объём входит в прогресс с самого старта попытки
+    state.set_inflight(&task.dest, part_len);
 
     let mut request = client
         .get(&task.url)
@@ -215,6 +249,8 @@ async fn attempt_download(
     let append = part_len > 0 && status.as_u16() == 206;
     if part_len > 0 && !append {
         tracing::warn!(url = %task.url, "server ignored Range header, restarting");
+        // файл обнуляется — старый вклад .part больше не существует
+        state.set_inflight(&task.dest, 0);
     }
     let mut file = fs::File::options()
         .create(true)
@@ -229,9 +265,7 @@ async fn attempt_download(
             Ok(Some(chunk)) => {
                 file.write_all(&chunk)
                     .map_err(|err| AttemptFail::fatal(err.into()))?;
-                state
-                    .bytes_done
-                    .fetch_add(chunk.len() as u64, Ordering::Relaxed);
+                state.add_inflight(&task.dest, chunk.len() as u64);
                 state.publish_throttled(tx);
             }
             Ok(None) => break,
@@ -245,7 +279,7 @@ async fn attempt_download(
     drop(file);
 
     if let Some(expected) = &task.sha1 {
-        let actual = sha1_file(&part).map_err(AttemptFail::fatal)?;
+        let actual = cache::sha1_file(&part).map_err(AttemptFail::fatal)?;
         if &actual != expected {
             if let Err(err) = fs::remove_file(&part) {
                 tracing::warn!(%err, "failed to drop corrupted .part");
@@ -259,7 +293,8 @@ async fn attempt_download(
     }
 
     fs::rename(&part, &task.dest).map_err(|err| AttemptFail::fatal(err.into()))?;
-    state.files_done.fetch_add(1, Ordering::Relaxed);
+    let real_len = fs::metadata(&task.dest).map(|meta| meta.len()).unwrap_or(0);
+    state.complete(&task.dest, real_len);
     state.publish(tx);
     Ok(())
 }
@@ -273,8 +308,7 @@ async fn download_one(
 ) -> Result<(), CoreError> {
     if existing_is_valid(&task.dest, task.sha1.as_deref()) {
         let size = fs::metadata(&task.dest).map(|meta| meta.len()).unwrap_or(0);
-        state.bytes_done.fetch_add(size, Ordering::Relaxed);
-        state.files_done.fetch_add(1, Ordering::Relaxed);
+        state.complete(&task.dest, size);
         state.publish(tx);
         tracing::debug!(path = %task.dest.display(), "file already present, skipping");
         return Ok(());
@@ -286,7 +320,9 @@ async fn download_one(
     }
 
     let mut last_error = None;
+    let mut attempts_made = 0;
     for attempt in 1..=DOWNLOAD_ATTEMPTS {
+        attempts_made = attempt;
         match attempt_download(client, task, state, tx).await {
             Ok(()) => return Ok(()),
             Err(fail) => {
@@ -297,6 +333,8 @@ async fn download_one(
                     url = %task.url,
                     "download attempt failed"
                 );
+                // .part мог измениться (обрыв, удаление брака) — синхронизируем вклад
+                state.sync_inflight(&task.dest);
                 let retryable = fail.retryable;
                 last_error = Some(fail.error);
                 if !retryable {
@@ -309,26 +347,54 @@ async fn download_one(
         }
     }
 
-    Err(last_error.unwrap_or_else(|| CoreError::DownloadFailed {
+    let error = last_error.unwrap_or_else(|| CoreError::DownloadFailed {
         url: task.url.clone(),
-        attempts: DOWNLOAD_ATTEMPTS,
-    }))
+        attempts: attempts_made,
+    });
+    // ошибка должна называть реальное число попыток, а не константу
+    Err(match error {
+        CoreError::DownloadFailed { url, .. } => CoreError::DownloadFailed {
+            url,
+            attempts: attempts_made,
+        },
+        other => other,
+    })
 }
 
 /// Скачать все задачи конкурентно ([`DOWNLOAD_CONCURRENCY`] потоков).
 ///
-/// Идемпотентно: уже лежащие валидные файлы не трогаются. Первая ошибка
-/// отменяет остальные задачи. Прогресс публикуется и при успехе, и при ошибке.
+/// Идемпотентно: уже лежащие валидные файлы не трогаются. Дубликаты по `dest`
+/// (в реальных индексах ассетов один hash встречается под разными именами)
+/// схлопываются в одну задачу — иначе два потока писали бы в один `.part`.
+/// Первая ошибка отменяет остальные задачи. Прогресс публикуется и при успехе,
+/// и при ошибке.
 pub async fn download_all(
     client: &reqwest::Client,
     tasks: Vec<DownloadTask>,
     tx: &watch::Sender<Progress>,
 ) -> Result<(), CoreError> {
+    let mut seen = HashSet::with_capacity(tasks.len());
+    let tasks: Vec<DownloadTask> = tasks
+        .into_iter()
+        .filter(|task| {
+            let fresh = seen.insert(task.dest.clone());
+            if !fresh {
+                tracing::warn!(
+                    dest = %task.dest.display(),
+                    url = %task.url,
+                    "duplicate download task dropped"
+                );
+            }
+            fresh
+        })
+        .collect();
+
     let state = ProgressState {
         files_total: tasks.len(),
         bytes_total: tasks.iter().map(|task| task.size.unwrap_or(0)).sum(),
-        bytes_done: AtomicU64::new(0),
+        completed_bytes: AtomicU64::new(0),
         files_done: AtomicU64::new(0),
+        inflight: Mutex::new(HashMap::new()),
         start: Instant::now(),
         last_publish: Mutex::new(Instant::now()),
     };
@@ -370,7 +436,11 @@ mod tests {
     }
 
     #[test]
-    fn hex_encode_is_lowercase_two_digits() {
-        assert_eq!(hex_encode(&[0x00, 0x0f, 0xff]), "000fff");
+    fn sha1_hex_is_lowercase_two_digits() {
+        // пустое содержимое → известный SHA-1
+        assert_eq!(
+            cache::sha1_hex(b""),
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+        );
     }
 }

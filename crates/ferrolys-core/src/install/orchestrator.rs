@@ -12,6 +12,7 @@ use tokio::sync::watch;
 
 use crate::error::CoreError;
 use crate::install::assets::{asset_tasks_with_base, parse_asset_index, ASSETS_BASE_URL};
+use crate::install::cache;
 use crate::install::download::{download_all, DownloadTask, Progress};
 use crate::install::libraries::{library_tasks, natives_targets};
 use crate::install::maven::extract_natives;
@@ -55,57 +56,54 @@ fn rewrite(url: &str, map: &[(String, String)]) -> String {
     url.to_string()
 }
 
-async fn fetch_bytes(client: &reqwest::Client, url: &str) -> Result<Vec<u8>, CoreError> {
-    let response = client
-        .get(url)
-        .header(reqwest::header::USER_AGENT, crate::APP_USER_AGENT)
-        .send()
-        .await?
-        .error_for_status()?;
-    Ok(response.bytes().await?.to_vec())
-}
-
-/// Кэш-файл: читать с диска, иначе скачать по url и положить в кэш.
+/// Кэш-файл с проверкой SHA-1: читать с диска, но только если содержимое
+/// совпадает с `expected_sha1` из манифеста; иначе — скачать заново.
+///
+/// Кэш без проверки опасен: каптив-портал/прокси может записать HTML вместо
+/// JSON, и установка падала бы вечно (отравленный кэш не самоизлечивался).
 async fn cached_json(
     client: &reqwest::Client,
     cache_file: &Path,
     url: &str,
+    expected_sha1: &str,
 ) -> Result<Vec<u8>, CoreError> {
     if let Ok(bytes) = fs::read(cache_file) {
-        return Ok(bytes);
+        let actual = cache::sha1_hex(&bytes);
+        if actual == expected_sha1 {
+            return Ok(bytes);
+        }
+        tracing::warn!(
+            path = %cache_file.display(),
+            expected = expected_sha1,
+            actual,
+            "corrupt cache entry (sha1 mismatch), refetching"
+        );
+        if let Err(err) = fs::remove_file(cache_file) {
+            tracing::warn!(%err, "failed to drop corrupt cache entry");
+        }
     }
-    let bytes = fetch_bytes(client, url).await?;
-    if let Err(err) = write_cache(cache_file, &bytes) {
+
+    let bytes = cache::fetch_bytes(client, url).await?;
+    let actual = cache::sha1_hex(&bytes);
+    if actual != expected_sha1 {
+        return Err(CoreError::Sha1Mismatch {
+            url: url.to_string(),
+            expected: expected_sha1.to_string(),
+            actual,
+        });
+    }
+    if let Err(err) = cache::write_cache(cache_file, &bytes) {
         tracing::warn!(%err, path = %cache_file.display(), "failed to write cache");
     }
     Ok(bytes)
 }
 
-/// Атомарная запись кэша: `<file>.tmp` → rename.
-fn write_cache(file: &Path, bytes: &[u8]) -> Result<(), CoreError> {
-    if let Some(dir) = file.parent() {
-        fs::create_dir_all(dir)?;
-    }
-    let tmp = file.with_extension("json.tmp");
-    fs::write(&tmp, bytes)?;
-    fs::rename(&tmp, file)?;
-    Ok(())
-}
-
-/// Скачать задачи одной фазы (пустая фаза — no-op).
-async fn run_phase(
-    client: &reqwest::Client,
-    tasks: Vec<DownloadTask>,
-    tx: &watch::Sender<Progress>,
-) -> Result<(), CoreError> {
-    download_all(client, tasks, tx).await
-}
-
 /// Установить версию `version_id` в инстанс `instance_id`.
 ///
-/// Фазы: version-json (кэш) → client jar → libraries → natives (распаковка)
-/// → assets (индекс в кэше) → logging-конфиг. Прогресс каждой фазы шлётся
-/// в один `watch`.
+/// Фазы: version-json (кэш с проверкой SHA-1) → сбор ВСЕХ задач (client jar,
+/// libraries, assets, logging) в один `download_all` → распаковка natives.
+/// Один `download_all` даёт кумулятивный прогресс: счётчики не сбрасываются
+/// между «фазами», UI не показывает регрессию.
 pub async fn install_version(
     paths: &FerrolysPaths,
     opts: &InstallOptions,
@@ -122,8 +120,13 @@ pub async fn install_version(
         .cache_dir()
         .join("versions")
         .join(format!("{}.json", opts.version_id));
-    let vj_bytes =
-        cached_json(&opts.client, &vj_cache, &rewrite(&entry.url, &opts.url_map)).await?;
+    let vj_bytes = cached_json(
+        &opts.client,
+        &vj_cache,
+        &rewrite(&entry.url, &opts.url_map),
+        &entry.sha1,
+    )
+    .await?;
     let vj = parse_version_json(&vj_bytes)?;
     tracing::debug!(version = %vj.id, "version json loaded");
 
@@ -133,25 +136,60 @@ pub async fn install_version(
     let natives_dir = version_dir.join("natives");
 
     // 2. client jar
-    let mut phase: Vec<DownloadTask> = Vec::new();
+    let mut tasks: Vec<DownloadTask> = Vec::new();
     if let Some(client_artifact) = &vj.downloads.client {
-        phase.push(DownloadTask {
+        tasks.push(DownloadTask {
             url: rewrite(&client_artifact.url, &opts.url_map),
             dest: version_dir.join(format!("{}.jar", opts.version_id)),
             sha1: Some(client_artifact.sha1.clone()),
             size: Some(client_artifact.size),
         });
     }
-    run_phase(&opts.client, phase, tx).await?;
 
     // 3. libraries (артефакты + natives-классификаторы старого формата)
-    let mut phase = library_tasks(&vj, &libraries_dir);
-    for task in &mut phase {
+    for mut task in library_tasks(&vj, &libraries_dir) {
         task.url = rewrite(&task.url, &opts.url_map);
+        tasks.push(task);
     }
-    run_phase(&opts.client, phase, tx).await?;
 
-    // 4. natives: распаковка скачанных классификаторов
+    // 4. assets (индекс в кэше — с проверкой SHA-1)
+    let asset_index = &vj.asset_index;
+    let ai_cache = paths
+        .cache_dir()
+        .join("asset_indexes")
+        .join(format!("{}.json", asset_index.id));
+    let ai_bytes = cached_json(
+        &opts.client,
+        &ai_cache,
+        &rewrite(&asset_index.url, &opts.url_map),
+        &asset_index.sha1,
+    )
+    .await?;
+    let index = parse_asset_index(&ai_bytes)?;
+    let assets_base = rewrite(ASSETS_BASE_URL, &opts.url_map);
+    tasks.extend(asset_tasks_with_base(
+        &index,
+        &paths.assets_dir(),
+        &assets_base,
+    ));
+
+    // 5. logging.client: сам конфиг (подмена JVM-аргумента — задача §7.2)
+    if let Some(logging) = &vj.logging_client {
+        tasks.push(DownloadTask {
+            url: rewrite(&logging.file.url, &opts.url_map),
+            dest: paths
+                .assets_dir()
+                .join("log_configs")
+                .join(&logging.file_id),
+            sha1: Some(logging.file.sha1.clone()),
+            size: Some(logging.file.size),
+        });
+    }
+
+    // 6. скачивание всех файлов одной пачкой (кумулятивный прогресс)
+    download_all(&opts.client, tasks, tx).await?;
+
+    // 7. natives: распаковка скачанных классификаторов
     for target in natives_targets(&vj, &libraries_dir, &natives_dir) {
         if !target.archive.exists() {
             tracing::warn!(
@@ -166,41 +204,6 @@ pub async fn install_version(
             extracted,
             "natives extracted"
         );
-    }
-
-    // 5. assets
-    let asset_index = &vj.asset_index;
-    let ai_cache = paths
-        .cache_dir()
-        .join("asset_indexes")
-        .join(format!("{}.json", asset_index.id));
-    let ai_bytes = cached_json(
-        &opts.client,
-        &ai_cache,
-        &rewrite(&asset_index.url, &opts.url_map),
-    )
-    .await?;
-    let index = parse_asset_index(&ai_bytes)?;
-    let assets_base = rewrite(ASSETS_BASE_URL, &opts.url_map);
-    run_phase(
-        &opts.client,
-        asset_tasks_with_base(&index, &paths.assets_dir(), &assets_base),
-        tx,
-    )
-    .await?;
-
-    // 6. logging.client: сам конфиг (подмена JVM-аргумента — задача §7.2)
-    if let Some(logging) = &vj.logging_client {
-        let task = DownloadTask {
-            url: rewrite(&logging.file.url, &opts.url_map),
-            dest: paths
-                .assets_dir()
-                .join("log_configs")
-                .join(&logging.file_id),
-            sha1: Some(logging.file.sha1.clone()),
-            size: Some(logging.file.size),
-        };
-        run_phase(&opts.client, vec![task], tx).await?;
     }
 
     Ok(())
